@@ -1,0 +1,79 @@
+{
+  "hero": {
+    "titleLine1": "Unlock Your",
+    "titleLine2": "Online",
+    "titleHighlight": "Marketing",
+    "subtitle": "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout",
+    "bannerImage": "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&w=900&h=900&q=80"
+  },
+  "services": [
+    {
+      "title": "Digital Advertising",
+      "description": "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout"
+    },
+    {
+      "title": "Search Engine",
+      "description": "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout"
+    },
+    {
+      "title": "Social Media Management",
+      "description": "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout"
+    }
+  ],
+  "projects": [
+    {
+      "title": "Brand design",
+      "description": "Customer satisfaction is crucial for a des amohlodi business as it leads",
+      "image": "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=600&h=615&q=80"
+    },
+    {
+      "title": "E-commerce Solutions",
+      "description": "Customer satisfaction is crucial for a des amohlodi business as it leads",
+      "image": "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=600&h=615&q=80"
+    },
+    {
+      "title": "Mobile Marketing",
+      "description": "Customer satisfaction is crucial for a des amohlodi business as it leads",
+      "image": "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=600&h=615&q=80"
+    }
+  ],
+  "testimonials": [
+    {
+      "name": "Robert Fox",
+      "role": "Nursing Assistant",
+      "quote": "Financial planners help people to knowledge in about how to invest and save their moneye the most efficient way in to eve.planners Financial planners help people to my destin knowledge in about how to invest",
+      "avatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&h=120&q=80"
+    },
+    {
+      "name": "Leslie Alexander",
+      "role": "Nursing Assistant",
+      "quote": "Financial planners help people to knowledge in about how to invest and save their moneye the most efficient way in to eve.planners Financial planners help people to my destin knowledge in about how to invest",
+      "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&h=120&q=80"
+    }
+  ],
+  "blog": [
+    {
+      "title": "Reach New Heights with Digital the Search Engine Results",
+      "image": "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=630&h=385&q=80",
+      "author": "admin",
+      "date": "October 19, 2023",
+      "category": "SEO",
+      "excerpt": "Medical is a field that deals with the study, diagnosis, and treatment diseases Medical is a field that deals with the",
+      "content": "Medical is a field that deals with the study, diagnosis, and treatment of diseases. In digital marketing, reaching new heights means optimizing every touchpoint of the customer journey, from the first search result to the final conversion."
+    },
+    {
+      "title": "Propel Your Business to Success with SEO Boost Your Online Presence",
+      "image": "https://images.unsplash.com/photo-1508385082359-f38ae991e8f2?auto=format&fit=crop&w=630&h=385&q=80",
+      "author": "admin",
+      "date": "October 19, 2023",
+      "category": "Marketing",
+      "excerpt": "Medical is a field that deals with the study, diagnosis, and treatment diseases Medical is a field that deals with the",
+      "content": "Propelling your business to success requires a strategic approach to search engine optimization. By boosting your online presence, you increase visibility, attract qualified leads, and build lasting authority in your niche."
+    }
+  ],
+  "contact": {
+    "address": "Amsterdam, 109-74",
+    "phone": "+01 569 896 654",
+    "email": "info@example.com"
+  }
+}
