@@ -1,68 +1,69 @@
+import { ArrowRight, Play } from "./icons";
+
+const STATS = [
+  { num: "5000+", lbl: "Happy Clients" },
+  { num: "10+", lbl: "Years Experience" },
+  { num: "300+", lbl: "Projects Completed" },
+  { num: "20+", lbl: "Team Members" },
+];
+
 export default function Hero({ hero }) {
   return (
-    <section
-      className="hero-section"
-      data-background="/assets/img/bg-img/hero-bg.png"
-    >
-      <div className="hero-shapes">
-        <div className="shape top-shape"></div>
-        <div className="shape bottom-shape"></div>
-      </div>
-      <div className="container">
-        <div className="row align-items-center">
-          <div className="col-lg-6">
-            <div className="hero-content md-pb-20">
-              <h1 className="title tracking-in-expand">
-                <span className="shape-text">
-                  {hero.titleLine1}{" "}
-                  <img
-                    className="shape"
-                    src="/assets/img/shapes/hero-text-shape.png"
-                    alt="shape"
-                  />
-                </span>{" "}
-                {hero.titleLine2} <span className="gradient-text">{hero.titleHighlight}</span>
-              </h1>
-              <p>{hero.subtitle}</p>
-              <a href="/about" className="pb-primary-btn primary-2">
-                Learn More
-              </a>
-              <div className="shapes">
-                <div className="round-shape">
-                  <img src="/assets/img/shapes/hero-round.png" alt="shape" />
+    <section className="hero">
+      <div className="container hero-grid">
+        <div className="hero-copy">
+          <span className="hero-badge">
+            <span className="dot" /> WE GROW BRANDS ONLINE
+          </span>
+          <h1>
+            {hero.titleLine1}
+            <br />
+            {hero.titleLine2}{" "}
+            <span className="text-orange">{hero.titleHighlight}</span>{" "}
+            {hero.titleHighlight2 && (
+              <span className="text-violet">{hero.titleHighlight2}</span>
+            )}
+          </h1>
+          <p className="lead">{hero.subtitle}</p>
+          <div className="hero-cta">
+            <a href="/contact" className="btn btn-primary">
+              Get Started <ArrowRight size={16} />
+            </a>
+            <a href="/portfolio" className="btn btn-outline">
+              <Play size={14} /> View Our Work
+            </a>
+          </div>
+          <div className="hero-stats">
+            {STATS.map((s) => (
+              <div key={s.lbl}>
+                <div className="num">
+                  {s.num.replace("+", "")}
+                  <span>+</span>
                 </div>
-                <div className="star">
-                  <img src="/assets/img/shapes/hero-star.png" alt="shape" />
-                </div>
+                <div className="lbl">{s.lbl}</div>
               </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="hero-visual">
+          <img src={hero.bannerImage} alt="Digital marketing dashboard" />
+          <div className="hero-chip up one">
+            <div>
+              <div className="cap">Traffic Growth</div>
+              <div className="val">+156%</div>
             </div>
           </div>
-          <div className="col-lg-6">
-            <div className="hero-thumb text-center">
-              <div className="shapes">
-                <div className="shape hero-shape-1">
-                  <img src="/assets/img/shapes/hero-shape-1.png" alt="shape" />
-                </div>
-                <div className="shape hero-shape-2">
-                  <img src="/assets/img/shapes/hero-img-shape-1.png" alt="shape" />
-                </div>
-                <div className="shape hero-shape-3">
-                  <img src="/assets/img/shapes/hero-img-shape-2.png" alt="shape" />
-                </div>
-              </div>
-              <div className="hero-counter">
-                <img src="/assets/img/icon/hero-user.png" alt="icon" />
-                <div className="counter-content">
-                  <h3 className="title">
-                    <span className="odometer" data-count="5000">
-                      0
-                    </span>
-                    +
-                  </h3>
-                  <p>Satisfied Clients</p>
-                </div>
-              </div>
-              <img src={hero.bannerImage} alt="hero" />
+          <div className="hero-chip up two">
+            <div>
+              <div className="cap">Conversion Rate</div>
+              <div className="val">+89%</div>
+            </div>
+          </div>
+          <div className="hero-chip up three">
+            <div>
+              <div className="cap">ROI Increase</div>
+              <div className="val">+240%</div>
             </div>
           </div>
         </div>

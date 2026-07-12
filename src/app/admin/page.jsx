@@ -16,6 +16,7 @@ const TABS = [
   { key: "services", label: "Services" },
   { key: "projects", label: "Portfolio" },
   { key: "testimonials", label: "Testimonials" },
+  { key: "gallery", label: "Gallery" },
   { key: "blog", label: "Blog" },
   { key: "contact", label: "Contact" },
 ];
@@ -140,20 +141,20 @@ export default function AdminDashboard() {
 
   function updateListItem(listKey, index, field, value) {
     setContent((c) => {
-      const list = [...c[listKey]];
+      const list = [...(c[listKey] || [])];
       list[index] = { ...list[index], [field]: value };
       return { ...c, [listKey]: list };
     });
   }
 
   function addListItem(listKey, blank) {
-    setContent((c) => ({ ...c, [listKey]: [...c[listKey], blank] }));
+    setContent((c) => ({ ...c, [listKey]: [...(c[listKey] || []), blank] }));
   }
 
   function removeListItem(listKey, index) {
     setContent((c) => ({
       ...c,
-      [listKey]: c[listKey].filter((_, i) => i !== index),
+      [listKey]: (c[listKey] || []).filter((_, i) => i !== index),
     }));
   }
 
@@ -218,13 +219,23 @@ export default function AdminDashboard() {
                     onChange={(e) => updateHero("titleLine2", e.target.value)}
                   />
                 </div>
-                <div className="field">
-                  <label>Highlighted word</label>
-                  <input
-                    type="text"
-                    value={content.hero.titleHighlight}
-                    onChange={(e) => updateHero("titleHighlight", e.target.value)}
-                  />
+                <div className="field-row">
+                  <div className="field">
+                    <label>Highlighted word (orange)</label>
+                    <input
+                      type="text"
+                      value={content.hero.titleHighlight}
+                      onChange={(e) => updateHero("titleHighlight", e.target.value)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label>Highlighted word 2 (violet)</label>
+                    <input
+                      type="text"
+                      value={content.hero.titleHighlight2 || ""}
+                      onChange={(e) => updateHero("titleHighlight2", e.target.value)}
+                    />
+                  </div>
                 </div>
                 <div className="field">
                   <label>Subtitle</label>
@@ -234,9 +245,14 @@ export default function AdminDashboard() {
                   />
                 </div>
                 <ImageField
-                  label="Hero banner image"
+                  label="Hero side image"
                   value={content.hero.bannerImage}
                   onChange={(url) => updateHero("bannerImage", url)}
+                />
+                <ImageField
+                  label="Hero background banner"
+                  value={content.hero.backgroundImage}
+                  onChange={(url) => updateHero("backgroundImage", url)}
                 />
               </div>
             </>
@@ -384,6 +400,48 @@ export default function AdminDashboard() {
                 }
               >
                 + Add testimonial
+              </button>
+            </>
+          )}
+
+          {activeTab === "gallery" && (
+            <>
+              <h1>Gallery</h1>
+              <p className="subtitle">
+                Photos shown on the Gallery page. Upload images (auto-optimized
+                to WebP) and add an optional caption.
+              </p>
+              {(content.gallery || []).map((g, i) => (
+                <div className="item-card" key={i}>
+                  <button
+                    className="remove-btn"
+                    onClick={() => removeListItem("gallery", i)}
+                  >
+                    Remove
+                  </button>
+                  <ImageField
+                    label="Image"
+                    value={g.image}
+                    onChange={(url) => updateListItem("gallery", i, "image", url)}
+                  />
+                  <div className="field">
+                    <label>Caption</label>
+                    <input
+                      type="text"
+                      value={g.caption || ""}
+                      placeholder="Shown on hover (optional)"
+                      onChange={(e) =>
+                        updateListItem("gallery", i, "caption", e.target.value)
+                      }
+                    />
+                  </div>
+                </div>
+              ))}
+              <button
+                className="add-item-btn"
+                onClick={() => addListItem("gallery", { image: "", caption: "" })}
+              >
+                + Add gallery image
               </button>
             </>
           )}

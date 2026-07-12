@@ -1,32 +1,32 @@
 import { getContent } from "@/lib/content";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
-import PageBanner from "../components/PageBanner";
-import About from "../components/About";
-import Skill from "../components/Skill";
-import Counter from "../components/Counter";
+import SiteHeader from "../components/SiteHeader";
+import SiteFooter from "../components/SiteFooter";
+import PageHero from "../components/PageHero";
+import AboutSection from "../components/AboutSection";
+import WhyChooseUs from "../components/WhyChooseUs";
+import StatsBar from "../components/StatsBar";
 import Testimonials from "../components/Testimonials";
+import CtaBanner from "../components/CtaBanner";
 
 export const dynamic = "force-dynamic";
-
-export const metadata = {
-  title: "About Us - Universal Design Duo",
-};
+export const metadata = { title: "About Us - Universal Design Duo" };
 
 export default async function AboutPage() {
   const content = await getContent();
-
   return (
     <>
-      <Header contact={content.contact} active="/about" />
-      <PageBanner title="About Us" />
-      <div className="pt-120">
-        <About />
-      </div>
-      <Skill />
-      <Counter />
-      <Testimonials testimonials={content.testimonials} />
-      <Footer />
+      <SiteHeader active="/about" />
+      <main>
+        <PageHero title="About Us" />
+        <AboutSection />
+        <div style={{ paddingBottom: 40 }}>
+          <StatsBar />
+        </div>
+        <WhyChooseUs />
+        <Testimonials testimonials={content.testimonials} />
+        <CtaBanner />
+      </main>
+      <SiteFooter />
     </>
   );
 }

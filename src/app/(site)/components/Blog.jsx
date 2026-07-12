@@ -1,38 +1,41 @@
-export default function Blog({ posts }) {
+import { ArrowRight } from "./icons";
+
+export default function Blog({ posts, heading = true }) {
   return (
-    <section id="blog" className="blog-section pt-120 pb-120">
+    <section id="blog" className="section">
       <div className="container">
-        <div className="section-heading heading-2">
-          <h4 className="sub-heading">Our Blogs</h4>
-          <h2 className="section-title">
-            Drive Results with <span>Effective</span> Online Marketing
-          </h2>
-        </div>
-        <div className="row gy-lg-0 gy-4 justify-content-center">
+        {heading && (
+          <div className="section-head">
+            <div className="eyebrow">Our Blog</div>
+            <h2 className="section-title">Latest Insights &amp; Tips</h2>
+            <p>
+              Drive results with effective online marketing — fresh ideas from
+              our team.
+            </p>
+          </div>
+        )}
+        <div className="blog-grid">
           {posts.map((post, i) => (
-            <div className="col-md-6" key={i}>
-              <div className="post-card">
-                <div className="post-thumb">
-                  <img src={post.image} alt={post.title} />
-                </div>
-                <div className="post-content-wrap">
-                  <ul className="post-meta">
-                    <li>By {post.author || "admin"}</li>
-                    {post.category && <li>{post.category}</li>}
-                    <li>{post.date || ""}</li>
-                  </ul>
-                  <div className="post-content">
-                    <h3 className="title">
-                      <a href="/blog">{post.title}</a>
-                    </h3>
-                    <p>
-                      {post.excerpt ||
-                        "Medical is a field that deals with the study, diagnosis, and treatment diseases Medical is a field that deals with the"}
-                    </p>
-                  </div>
-                </div>
+            <article className="blog-card" key={i}>
+              <div className="blog-thumb">
+                <img src={post.image} alt={post.title} />
               </div>
-            </div>
+              <div className="blog-body">
+                <div className="blog-meta">
+                  {post.category && <span className="cat">{post.category}</span>}
+                  <span>{post.date}</span>
+                  <span>By {post.author || "admin"}</span>
+                </div>
+                <h3>{post.title}</h3>
+                <p>
+                  {post.excerpt ||
+                    "Practical strategies and insights to help your brand grow online."}
+                </p>
+                <a href="/blog" className="learn">
+                  Read More <ArrowRight size={15} />
+                </a>
+              </div>
+            </article>
           ))}
         </div>
       </div>

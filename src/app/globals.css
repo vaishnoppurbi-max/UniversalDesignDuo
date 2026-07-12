@@ -1,25 +1,3 @@
 html {
   scroll-behavior: smooth;
 }
-
-/* Universal Design Duo logo is a portrait mark (icon + stacked wordmark),
-   unlike the template's original wide banner logo, so it needs its own
-   height-based sizing instead of the template's max-width rules. */
-.primary-header-inner .header-logo img,
-.primary-header-inner .header-right .header-logo img {
-  max-width: none;
-  width: auto;
-  height: 56px;
-}
-
-.side-menu-head img {
-  max-width: none;
-  width: auto;
-  height: 48px;
-}
-
-.footer-widget .site-logo img {
-  max-width: none;
-  width: auto;
-  height: 90px;
-}

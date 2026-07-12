@@ -1,23 +1,37 @@
 {
   "hero": {
-    "titleLine1": "Unlock Your",
-    "titleLine2": "Online",
-    "titleHighlight": "Marketing",
-    "subtitle": "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout",
-    "bannerImage": "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&w=900&h=900&q=80"
+    "titleLine1": "Digital Marketing",
+    "titleLine2": "That",
+    "titleHighlight": "Drives",
+    "titleHighlight2": "Results",
+    "subtitle": "We create data-driven strategies that attract, engage, and convert your ideal customers.",
+    "bannerImage": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=900&h=650&q=80",
+    "backgroundImage": "/assets/img/bg-img/hero-bg.png"
   },
   "services": [
     {
       "title": "Digital Advertising",
-      "description": "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout"
+      "description": "Target the right audience with data-driven ad campaigns that deliver measurable results."
     },
     {
-      "title": "Search Engine",
-      "description": "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout"
+      "title": "Search Engine Optimization",
+      "description": "Improve your website ranking and drive organic traffic with our proven SEO strategies."
     },
     {
-      "title": "Social Media Management",
-      "description": "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout"
+      "title": "Social Media Marketing",
+      "description": "Build your brand and engage your audience across all major social media platforms."
+    },
+    {
+      "title": "Content Marketing",
+      "description": "Create compelling content that attracts, engages, and converts your target audience."
+    },
+    {
+      "title": "Email Marketing",
+      "description": "Nurture leads and drive conversions with personalized email marketing campaigns."
+    },
+    {
+      "title": "Analytics & Reporting",
+      "description": "Track performance and make data-driven decisions with detailed analytics and reports."
     }
   ],
   "projects": [
@@ -39,16 +53,22 @@
   ],
   "testimonials": [
     {
-      "name": "Robert Fox",
-      "role": "Nursing Assistant",
-      "quote": "Financial planners help people to knowledge in about how to invest and save their moneye the most efficient way in to eve.planners Financial planners help people to my destin knowledge in about how to invest",
+      "name": "Sarah Johnson",
+      "role": "CEO, TechStart",
+      "quote": "Universal Design Duo transformed our online presence. Our website traffic increased by 200% and leads by 150%. Highly recommended!",
+      "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&h=120&q=80"
+    },
+    {
+      "name": "Michael Chen",
+      "role": "Marketing Director, GrowthCo",
+      "quote": "Their team is professional, responsive, and delivers exceptional results. Our ROI has never been better.",
       "avatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&h=120&q=80"
     },
     {
-      "name": "Leslie Alexander",
-      "role": "Nursing Assistant",
-      "quote": "Financial planners help people to knowledge in about how to invest and save their moneye the most efficient way in to eve.planners Financial planners help people to my destin knowledge in about how to invest",
-      "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&h=120&q=80"
+      "name": "Emily Davis",
+      "role": "Founder, ShopEasy",
+      "quote": "The strategies they implemented helped us dominate our market. Sales increased by 300% in just 6 months!",
+      "avatar": "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=120&h=120&q=80"
     }
   ],
   "blog": [
@@ -75,5 +95,31 @@
     "address": "Amsterdam, 109-74",
     "phone": "+01 569 896 654",
     "email": "info@example.com"
-  }
+  },
+  "gallery": [
+    {
+      "image": "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=800&h=600&q=80",
+      "caption": "Strategy Workshop"
+    },
+    {
+      "image": "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&h=600&q=80",
+      "caption": "Team Collaboration"
+    },
+    {
+      "image": "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=800&h=600&q=80",
+      "caption": "Creative Session"
+    },
+    {
+      "image": "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&w=800&h=600&q=80",
+      "caption": "Client Presentation"
+    },
+    {
+      "image": "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&h=600&q=80",
+      "caption": "Office Culture"
+    },
+    {
+      "image": "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=800&h=600&q=80",
+      "caption": "Brainstorming"
+    }
+  ]
 }

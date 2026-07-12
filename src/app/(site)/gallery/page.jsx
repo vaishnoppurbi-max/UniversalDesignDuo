@@ -2,20 +2,20 @@ import { getContent } from "@/lib/content";
 import SiteHeader from "../components/SiteHeader";
 import SiteFooter from "../components/SiteFooter";
 import PageHero from "../components/PageHero";
-import Blog from "../components/Blog";
+import Gallery from "../components/Gallery";
 import CtaBanner from "../components/CtaBanner";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Blog - Universal Design Duo" };
+export const metadata = { title: "Gallery - Universal Design Duo" };
 
-export default async function BlogPage() {
+export default async function GalleryPage() {
   const content = await getContent();
   return (
     <>
-      <SiteHeader active="/blog" />
+      <SiteHeader active="/gallery" />
       <main>
-        <PageHero title="Blog" />
-        <Blog posts={content.blog} />
+        <PageHero title="Gallery" />
+        <Gallery items={content.gallery || []} />
         <CtaBanner />
       </main>
       <SiteFooter />
