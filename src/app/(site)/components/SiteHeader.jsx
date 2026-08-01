@@ -8,6 +8,7 @@ const NAV = [
   { href: "/about", label: "About Us" },
   { href: "/services", label: "Services" },
   { href: "/portfolio", label: "Portfolio" },
+  { href: "/#process", label: "Process" },
   { href: "/blog", label: "Blog" },
   { href: "/contact", label: "Contact" },
 ];
@@ -39,7 +40,7 @@ export default function SiteHeader({ active = "/" }) {
             <Globe size={20} />
           </span>
           <a href="/contact" className="btn btn-primary">
-            Get Started <ArrowRight size={16} />
+            Let&apos;s Talk <ArrowRight size={16} />
           </a>
           <button
             className="menu-toggle"
@@ -63,7 +64,7 @@ export default function SiteHeader({ active = "/" }) {
           </a>
         ))}
         <a href="/contact" className="btn btn-primary">
-          Get Started <ArrowRight size={16} />
+          Let&apos;s Talk <ArrowRight size={16} />
         </a>
       </div>
     </header>

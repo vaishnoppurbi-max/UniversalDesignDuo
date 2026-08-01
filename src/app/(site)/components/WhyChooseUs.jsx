@@ -1,50 +1,30 @@
-import { Target, Shield, Eye, Headset } from "./icons";
+import { Trophy, ThumbsUp, Target, Users } from "./icons";
 
-const FEATURES = [
-  {
-    Icon: Target,
-    title: "ROI Focused",
-    text: "Every strategy is designed to maximize your return on investment.",
-  },
-  {
-    Icon: Shield,
-    title: "Proven Strategies",
-    text: "Our methods are tested, proven, and continuously optimized.",
-  },
-  {
-    Icon: Eye,
-    title: "Transparent Process",
-    text: "Clear communication and regular reporting keep you in the loop.",
-  },
-  {
-    Icon: Headset,
-    title: "Dedicated Support",
-    text: "Our team is always here to support your success.",
-  },
+const STATS = [
+  { Icon: Trophy, num: "150+", lbl: "Projects Delivered" },
+  { Icon: ThumbsUp, num: "98%", lbl: "Client Satisfaction" },
+  { Icon: Target, num: "6+", lbl: "Years of Experience" },
+  { Icon: Users, num: "50+", lbl: "Happy Clients" },
 ];
 
 export default function WhyChooseUs() {
   return (
-    <section className="section">
-      <div className="container why-grid">
-        <div>
-          <div className="eyebrow">Why Choose Us</div>
-          <h2 className="section-title">
-            Results That <span className="text-violet">Matter</span>
-          </h2>
-          <p style={{ color: "var(--muted)", marginTop: 14 }}>
-            We focus on delivering measurable results that impact your bottom line.
-          </p>
+    <section className="section soft">
+      <div className="container">
+        <div className="section-head">
+          <h2 className="section-title">Why Choose Universal Design Duo?</h2>
         </div>
-        {FEATURES.map((f) => (
-          <div className="feature" key={f.title}>
-            <div className="fic">
-              <f.Icon size={24} />
+        <div className="why-stats">
+          {STATS.map(({ Icon, num, lbl }) => (
+            <div className="why-stat" key={lbl}>
+              <span className="wic">
+                <Icon size={26} />
+              </span>
+              <div className="num">{num}</div>
+              <div className="lbl">{lbl}</div>
             </div>
-            <h4>{f.title}</h4>
-            <p>{f.text}</p>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </section>
   );

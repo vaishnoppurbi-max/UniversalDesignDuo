@@ -1,71 +1,56 @@
-import { ArrowRight, Play } from "./icons";
+import { ArrowRight, Target, Users, Pencil } from "./icons";
 
-const STATS = [
-  { num: "5000+", lbl: "Happy Clients" },
-  { num: "10+", lbl: "Years Experience" },
-  { num: "300+", lbl: "Projects Completed" },
-  { num: "20+", lbl: "Team Members" },
+const CHIPS = [
+  { Icon: Target, label: "Product Strategy Research", pos: "one" },
+  { Icon: Users, label: "User-Centered Design", pos: "two" },
+  { Icon: Pencil, label: "Industrial Design Concept", pos: "three" },
 ];
 
-export default function Hero({ hero }) {
+export default function Hero({ hero, shots = [] }) {
+  // The collage uses the hero banner as the anchor image and borrows the next
+  // three images from the gallery so it fills out without extra admin fields.
+  const collage = [hero.bannerImage, ...shots].filter(Boolean).slice(0, 4);
+
   return (
     <section className="hero">
       <div className="container hero-grid">
         <div className="hero-copy">
-          <span className="hero-badge">
-            <span className="dot" /> WE GROW BRANDS ONLINE
-          </span>
+          <div className="hero-eyebrow">
+            Design That Connects. Products That Impact.
+          </div>
           <h1>
-            {hero.titleLine1}
+            {hero.titleLine1}{" "}
+            <span className="text-gold">{hero.titleHighlight}</span>
             <br />
             {hero.titleLine2}{" "}
-            <span className="text-orange">{hero.titleHighlight}</span>{" "}
             {hero.titleHighlight2 && (
-              <span className="text-violet">{hero.titleHighlight2}</span>
+              <span className="text-gold">{hero.titleHighlight2}</span>
             )}
           </h1>
           <p className="lead">{hero.subtitle}</p>
           <div className="hero-cta">
-            <a href="/contact" className="btn btn-primary">
-              Get Started <ArrowRight size={16} />
+            <a href="/portfolio" className="btn btn-primary">
+              View Our Work <ArrowRight size={16} />
             </a>
-            <a href="/portfolio" className="btn btn-outline">
-              <Play size={14} /> View Our Work
+            <a href="/services" className="btn btn-outline">
+              Explore Services <ArrowRight size={16} />
             </a>
-          </div>
-          <div className="hero-stats">
-            {STATS.map((s) => (
-              <div key={s.lbl}>
-                <div className="num">
-                  {s.num.replace("+", "")}
-                  <span>+</span>
-                </div>
-                <div className="lbl">{s.lbl}</div>
-              </div>
-            ))}
           </div>
         </div>
 
-        <div className="hero-visual">
-          <img src={hero.bannerImage} alt="Digital marketing dashboard" />
-          <div className="hero-chip up one">
-            <div>
-              <div className="cap">Traffic Growth</div>
-              <div className="val">+156%</div>
+        <div className="hero-collage">
+          {collage.map((src, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={src + i} className={`shot s${i + 1}`} src={src} alt="" />
+          ))}
+          {CHIPS.map(({ Icon, label, pos }) => (
+            <div className={`hero-chip ${pos}`} key={label}>
+              <span className="chip-ic">
+                <Icon size={14} />
+              </span>
+              {label}
             </div>
-          </div>
-          <div className="hero-chip up two">
-            <div>
-              <div className="cap">Conversion Rate</div>
-              <div className="val">+89%</div>
-            </div>
-          </div>
-          <div className="hero-chip up three">
-            <div>
-              <div className="cap">ROI Increase</div>
-              <div className="val">+240%</div>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     </section>

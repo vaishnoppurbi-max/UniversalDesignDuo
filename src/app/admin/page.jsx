@@ -3,6 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { compressImage } from "./imageUtils";
+import {
+  loadDims,
+  isSocialShape,
+  shapeLabel,
+  quickDuplicateGroups,
+  visualDuplicateGroups,
+  extrasOf,
+} from "./scan";
 import "./admin.css";
 
 function formatBytes(bytes) {
@@ -109,12 +117,23 @@ function ImageField({ label, value, onChange }) {
  * Bulk image library — grid of tiles with multi-file upload, drag & drop,
  * search, select-all and bulk delete. Used for Portfolio and Gallery.
  */
-function MediaGrid({ items, fields, blank, onAdd, onUpdate, onRemoveMany }) {
+function MediaGrid({
+  items,
+  fields,
+  blank,
+  onAdd,
+  onUpdate,
+  onRemoveMany,
+  categoryKey,
+}) {
   const inputRef = useRef(null);
   const [selected, setSelected] = useState(() => new Set());
   const [query, setQuery] = useState("");
   const [dragging, setDragging] = useState(false);
   const [progress, setProgress] = useState(null);
+  const [busy, setBusy] = useState(null); // label of the running tool
+  const [review, setReview] = useState(null); // { kind, groups } | { kind, hits }
+  const [extract, setExtract] = useState(null); // { url, images, picked }
 
   const searchable = (item) =>
     fields
@@ -167,8 +186,165 @@ function MediaGrid({ items, fields, blank, onAdd, onUpdate, onRemoveMany }) {
     if (failures.length) alert(`Failed to upload: ${failures.join(", ")}`);
   }
 
+  // ── Auto-detect Social: classify by image shape, review before applying ──
+  async function handleAutoSocial() {
+    if (!categoryKey) return;
+    setBusy("social");
+    const hits = [];
+    for (let i = 0; i < items.length; i++) {
+      setProgress(`Measuring ${i + 1} of ${items.length}...`);
+      if (!items[i].image) continue;
+      try {
+        const dims = await loadDims(items[i].image);
+        if (isSocialShape(dims) && items[i][categoryKey] !== "Social Media") {
+          hits.push({ index: i, shape: shapeLabel(dims), dims });
+        }
+      } catch {
+        /* unreadable image — skip */
+      }
+    }
+    setProgress(null);
+    setBusy(null);
+    if (hits.length === 0) return alert("No new social-shaped images found.");
+    setReview({ kind: "social", hits });
+  }
+
+  function applySocial() {
+    review.hits.forEach((h) => onUpdate(h.index, categoryKey, "Social Media"));
+    setReview(null);
+  }
+
+  // ── Quick Scan: filename/URL duplicates, instant ──
+  function handleQuickScan() {
+    const groups = quickDuplicateGroups(items);
+    if (groups.length === 0) return alert("No duplicate filenames found.");
+    setReview({ kind: "dupes", label: "Quick Scan", groups });
+  }
+
+  // ── Smart Scan: perceptual hash, catches re-encoded/resized copies ──
+  async function handleSmartScan(autoDelete = false) {
+    setBusy("smart");
+    const { groups, failed } = await visualDuplicateGroups(items, (done, total) =>
+      setProgress(`Analysing ${done} of ${total}...`)
+    );
+    setProgress(null);
+    setBusy(null);
+
+    const note = failed.length
+      ? `\n\n${failed.length} image(s) could not be analysed (blocked by CORS).`
+      : "";
+
+    if (groups.length === 0) return alert(`No visual duplicates found.${note}`);
+
+    if (autoDelete) {
+      const extras = extrasOf(groups);
+      if (
+        confirm(
+          `Found ${groups.length} duplicate group(s). Delete ${extras.length} extra image(s), keeping the first of each?${note}`
+        )
+      ) {
+        onRemoveMany(extras);
+        setSelected(new Set());
+      }
+      return;
+    }
+    setReview({ kind: "dupes", label: "Smart Scan", groups, note });
+  }
+
+  function deleteDuplicates() {
+    const extras = extrasOf(review.groups);
+    onRemoveMany(extras);
+    setSelected(new Set());
+    setReview(null);
+  }
+
+  // ── Extract Images: scrape a public page, pick which to import ──
+  async function runExtract(url) {
+    setBusy("extract");
+    try {
+      const res = await fetch("/api/admin/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Extraction failed");
+      if (!data.images.length) {
+        alert("No images found on that page.");
+        return;
+      }
+      setExtract({ url, images: data.images, picked: new Set(data.images) });
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function importExtracted() {
+    [...extract.picked].forEach((url) => onAdd({ ...blank, image: url }));
+    setExtract(null);
+  }
+
+  const anyBusy = busy !== null;
+
   return (
     <>
+      <div className="tool-bar">
+        {categoryKey && (
+          <button
+            className="tool tool-green"
+            onClick={handleAutoSocial}
+            disabled={anyBusy}
+            title="Detect square / portrait / story graphics and tag them as Social Media"
+          >
+            {busy === "social" ? `📱 ${progress || "Scanning…"}` : "📱 Auto-detect Social"}
+          </button>
+        )}
+        <button
+          className="tool tool-amber"
+          onClick={handleQuickScan}
+          disabled={anyBusy}
+          title="Fast duplicate scan by filename"
+        >
+          ⚡ Quick Scan
+        </button>
+        <button
+          className="tool tool-violet"
+          onClick={() => handleSmartScan(false)}
+          disabled={anyBusy}
+          title="Visual scan — preview duplicates before deleting"
+        >
+          {busy === "smart" ? `🧠 ${progress || "Working…"}` : "🧠 Smart Scan"}
+        </button>
+        <button
+          className="tool tool-red"
+          onClick={() => handleSmartScan(true)}
+          disabled={anyBusy}
+          title="Scan and delete all duplicates in one click"
+        >
+          🤖 Auto Delete Duplicates
+        </button>
+        <button
+          className="tool"
+          onClick={() => {
+            const url = prompt("Page URL to extract images from:");
+            if (url) runExtract(url);
+          }}
+          disabled={anyBusy}
+          title="Pull images off a public web page"
+        >
+          {busy === "extract" ? "🔍 Fetching…" : "🔍 Extract Images"}
+        </button>
+        <button
+          className="tool tool-upload"
+          onClick={() => inputRef.current?.click()}
+          disabled={anyBusy}
+        >
+          + Upload
+        </button>
+      </div>
+
       <div className="media-toolbar">
         <label className="select-all">
           <input type="checkbox" checked={allVisibleSelected} onChange={toggleAll} />
@@ -179,10 +355,7 @@ function MediaGrid({ items, fields, blank, onAdd, onUpdate, onRemoveMany }) {
             Delete selected ({selected.size})
           </button>
         )}
-        <button className="btn btn-primary" onClick={() => inputRef.current?.click()}>
-          + Upload images
-        </button>
-        {progress && <span className="upload-info">{progress}</span>}
+        {progress && !anyBusy && <span className="upload-info">{progress}</span>}
         <input
           ref={inputRef}
           type="file"
@@ -273,6 +446,120 @@ function MediaGrid({ items, fields, blank, onAdd, onUpdate, onRemoveMany }) {
 
       {items.length === 0 && (
         <p className="empty-note">Nothing here yet — upload your first images above.</p>
+      )}
+
+      {/* Auto-detect Social — review before applying */}
+      {review?.kind === "social" && (
+        <div className="modal-bg" onClick={() => setReview(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Auto-detected Social Media posts</h3>
+            <p className="modal-sub">
+              {review.hits.length} image(s) look like social creatives. Applying
+              will set their category to <strong>Social Media</strong>.
+            </p>
+            <div className="review-grid">
+              {review.hits.map((h) => (
+                <div className="review-tile" key={h.index}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={items[h.index].image} alt="" />
+                  <span className="review-tag">{h.shape}</span>
+                  <span className="review-dim">
+                    {h.dims.w}×{h.dims.h}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-ghost" onClick={() => setReview(null)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={applySocial}>
+                Tag {review.hits.length} as Social Media
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick / Smart Scan — duplicate groups */}
+      {review?.kind === "dupes" && (
+        <div className="modal-bg" onClick={() => setReview(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>{review.label}: {review.groups.length} duplicate group(s)</h3>
+            <p className="modal-sub">
+              The first image in each row is kept; the rest are removed.
+              {review.note}
+            </p>
+            <div className="dupe-list">
+              {review.groups.map((group, gi) => (
+                <div className="dupe-row" key={gi}>
+                  {group.map((idx, k) => (
+                    <div className={`review-tile${k === 0 ? " keep" : ""}`} key={idx}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={items[idx].image} alt="" />
+                      <span className="review-tag">{k === 0 ? "Keep" : "Remove"}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-ghost" onClick={() => setReview(null)}>
+                Cancel
+              </button>
+              <button className="btn btn-danger" onClick={deleteDuplicates}>
+                Delete {extrasOf(review.groups).length} duplicate(s)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Extract Images — pick which scraped images to import */}
+      {extract && (
+        <div className="modal-bg" onClick={() => setExtract(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Found {extract.images.length} image(s)</h3>
+            <p className="modal-sub">{extract.url}</p>
+            <div className="review-grid">
+              {extract.images.map((url) => (
+                <label
+                  className={`review-tile pick${
+                    extract.picked.has(url) ? " on" : ""
+                  }`}
+                  key={url}
+                >
+                  <input
+                    type="checkbox"
+                    checked={extract.picked.has(url)}
+                    onChange={() =>
+                      setExtract((e) => {
+                        const picked = new Set(e.picked);
+                        if (picked.has(url)) picked.delete(url);
+                        else picked.add(url);
+                        return { ...e, picked };
+                      })
+                    }
+                  />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt="" />
+                </label>
+              ))}
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-ghost" onClick={() => setExtract(null)}>
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={importExtracted}
+                disabled={extract.picked.size === 0}
+              >
+                Import {extract.picked.size} image(s)
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
@@ -512,9 +799,11 @@ export default function AdminDashboard() {
               items={content.projects || []}
               fields={[
                 { key: "title", placeholder: "Title" },
+                { key: "category", placeholder: "Category (used by the filter)" },
                 { key: "description", placeholder: "Description", type: "textarea" },
               ]}
-              blank={{ title: "", description: "", image: "" }}
+              blank={{ title: "", category: "", description: "", image: "" }}
+              categoryKey="category"
               onAdd={(item) => addListItem("projects", item)}
               onUpdate={(i, field, value) => updateListItem("projects", i, field, value)}
               onRemoveMany={(indexes) => removeListItems("projects", indexes)}
@@ -524,8 +813,12 @@ export default function AdminDashboard() {
           {activeTab === "gallery" && (
             <MediaGrid
               items={content.gallery || []}
-              fields={[{ key: "caption", placeholder: "Caption (shown on hover)" }]}
-              blank={{ image: "", caption: "" }}
+              fields={[
+                { key: "caption", placeholder: "Caption (shown on hover)" },
+                { key: "category", placeholder: "Category (used by the filter)" },
+              ]}
+              blank={{ image: "", caption: "", category: "" }}
+              categoryKey="category"
               onAdd={(item) => addListItem("gallery", item)}
               onUpdate={(i, field, value) => updateListItem("gallery", i, field, value)}
               onRemoveMany={(indexes) => removeListItems("gallery", indexes)}

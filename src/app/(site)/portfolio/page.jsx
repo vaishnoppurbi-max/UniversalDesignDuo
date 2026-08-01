@@ -3,7 +3,7 @@ import SiteHeader from "../components/SiteHeader";
 import SiteFooter from "../components/SiteFooter";
 import PageHero from "../components/PageHero";
 import Portfolio from "../components/Portfolio";
-import Gallery from "../components/Gallery";
+import GalleryFilter from "../components/GalleryFilter";
 import CtaBanner from "../components/CtaBanner";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ export default async function PortfolioPage() {
       <main>
         <PageHero title="Portfolio" />
         <Portfolio projects={content.projects} />
-        <Gallery items={content.gallery || []} heading={true} />
+        <GalleryFilter items={content.gallery || []} heading={true} />
         <CtaBanner />
       </main>
       <SiteFooter />

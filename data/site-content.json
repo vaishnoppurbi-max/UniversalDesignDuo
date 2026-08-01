@@ -38,17 +38,20 @@
     {
       "title": "Brand design",
       "description": "Customer satisfaction is crucial for a des amohlodi business as it leads",
-      "image": "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=600&h=615&q=80"
+      "image": "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=600&h=615&q=80",
+      "category": "Graphic Design"
     },
     {
       "title": "E-commerce Solutions",
       "description": "Customer satisfaction is crucial for a des amohlodi business as it leads",
-      "image": "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=600&h=615&q=80"
+      "image": "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=600&h=615&q=80",
+      "category": "Product Design"
     },
     {
       "title": "Mobile Marketing",
       "description": "Customer satisfaction is crucial for a des amohlodi business as it leads",
-      "image": "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=600&h=615&q=80"
+      "image": "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=600&h=615&q=80",
+      "category": "Packaging"
     }
   ],
   "testimonials": [
@@ -99,27 +102,33 @@
   "gallery": [
     {
       "image": "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=800&h=600&q=80",
-      "caption": "Strategy Workshop"
+      "caption": "Strategy Workshop",
+      "category": "Strategy"
     },
     {
       "image": "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&h=600&q=80",
-      "caption": "Team Collaboration"
+      "caption": "Team Collaboration",
+      "category": "Team"
     },
     {
       "image": "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=800&h=600&q=80",
-      "caption": "Creative Session"
+      "caption": "Creative Session",
+      "category": "Creative"
     },
     {
       "image": "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&w=800&h=600&q=80",
-      "caption": "Client Presentation"
+      "caption": "Client Presentation",
+      "category": "Clients"
     },
     {
       "image": "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&h=600&q=80",
-      "caption": "Office Culture"
+      "caption": "Office Culture",
+      "category": "Team"
     },
     {
       "image": "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=800&h=600&q=80",
-      "caption": "Brainstorming"
+      "caption": "Brainstorming",
+      "category": "Creative"
     }
   ]
 }
