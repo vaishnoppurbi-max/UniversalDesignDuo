@@ -471,6 +471,302 @@
   color: #ff7b8f;
 }
 
+/* ---------- upload portfolio panel ---------- */
+
+.upload-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 26px;
+  margin-bottom: 22px;
+}
+
+.upload-panel .panel-head {
+  margin-bottom: 20px;
+}
+.upload-panel .panel-head h2 {
+  font-size: 22px;
+  margin: 0 0 4px;
+  font-weight: 700;
+  color: #fff;
+}
+.upload-panel .panel-head p {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+.up-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr 2fr;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.up-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+.up-field label {
+  color: #8a93b5;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.up-field label .opt {
+  color: #5c68a0;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.up-field input,
+.up-field select {
+  padding: 10px 13px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+}
+.up-field input:focus,
+.up-field select:focus {
+  border-color: var(--accent);
+}
+.up-field input.violet-text { color: #c4b5fd; }
+.up-field input.green-text  { color: #86efac; }
+
+.up-website-row {
+  display: grid;
+  grid-template-columns: 3fr 1fr;
+  gap: 16px;
+  align-items: flex-end;
+  margin-bottom: 4px;
+}
+.up-website-btn {
+  padding: 11px 20px;
+  border-radius: 10px;
+  border: none;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+.up-website-btn:disabled {
+  background: var(--panel-2);
+  color: #4c5896;
+  cursor: not-allowed;
+}
+
+.up-site-preview {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.up-site-preview img {
+  width: 160px;
+  height: 100px;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+}
+.up-site-preview span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.up-site-preview strong { color: #86efac; }
+
+.up-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 20px 0 22px;
+}
+
+.up-zones {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.up-zone-col { display: flex; flex-direction: column; }
+
+.up-drop {
+  border: 1.5px dashed var(--line);
+  border-radius: 12px;
+  padding: 36px 20px;
+  text-align: center;
+  cursor: pointer;
+  background: rgba(var(--accent-rgb), 0.03);
+  transition: border-color 0.15s ease, background 0.15s ease;
+  color: #a8b8f5;
+}
+.up-drop:hover,
+.up-drop.dragging {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+.up-drop.disabled { opacity: 0.55; cursor: not-allowed; }
+.up-drop .icon { font-size: 34px; margin-bottom: 10px; }
+.up-drop .title {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+.up-drop .sub {
+  color: #5c68a0;
+  font-size: 12px;
+  margin: 0;
+  letter-spacing: 0.04em;
+}
+
+.yt-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+.yt-warn { color: #f87171; font-size: 12px; }
+.yt-ok   { color: #4ade80; font-weight: 600; }
+.yt-btn {
+  padding: 6px 14px;
+  background: rgba(255, 68, 68, 0.14);
+  border: 1px solid rgba(255, 68, 68, 0.35);
+  border-radius: 6px;
+  color: #f87171;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.up-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.up-preview-card {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.up-preview-card img {
+  width: 100%;
+  height: 64px;
+  object-fit: cover;
+  display: block;
+}
+.up-preview-card .x {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 20px;
+  height: 20px;
+  background: rgba(239, 68, 68, 0.85);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.up-count {
+  color: #a8b8f5;
+  font-size: 12px;
+  margin: 8px 0 0;
+  font-weight: 600;
+}
+
+.up-actions {
+  margin-top: 26px;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.up-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 26px;
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: -0.01em;
+}
+.up-btn.images {
+  background: linear-gradient(135deg, #6c63ff, #4f46e5);
+  box-shadow: 0 4px 20px rgba(108, 99, 255, 0.35);
+}
+.up-btn.videos {
+  background: linear-gradient(135deg, #f05a28, #e040fb);
+  box-shadow: 0 4px 20px rgba(240, 90, 40, 0.3);
+}
+.up-btn:disabled {
+  background: var(--panel-2);
+  color: #4c5896;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.up-progress {
+  margin-top: 16px;
+}
+.up-progress .bar {
+  height: 8px;
+  background: var(--panel-2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.up-progress .fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6c63ff, #e040fb);
+  transition: width 0.3s ease;
+}
+.up-progress .msg {
+  color: #a8b8f5;
+  font-size: 13px;
+  margin: 8px 0 0;
+}
+
+.up-results {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px;
+  margin-top: 20px;
+}
+.up-results .ok  { color: #4ade80; font-weight: 700; margin: 0 0 6px; }
+.up-results .err { color: #f87171; font-weight: 700; margin: 0 0 6px; }
+.up-results p    { color: #6b7280; font-size: 12px; margin: 3px 0; }
+
+@media (max-width: 900px) {
+  .up-fields,
+  .up-website-row,
+  .up-zones {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ---------- media library ---------- */
 
 /* ---------- media tool bar ---------- */

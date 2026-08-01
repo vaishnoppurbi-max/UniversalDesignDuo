@@ -32,6 +32,401 @@ async function uploadFile(file) {
   return data.url;
 }
 
+const UPLOAD_CATEGORIES = [
+  "General",
+  "Website Design",
+  "Web Design",
+  "UI/UX",
+  "Branding",
+  "Mobile App",
+  "Logo",
+  "Social Media",
+  "Photography",
+  "Graphic Design",
+  "Product Design",
+  "Packaging",
+];
+
+// Free WordPress mshots snapshot — captures a live site's home page.
+function shotUrl(url, w = 1200) {
+  return `https://s.wordpress.com/mshots/v1/${encodeURIComponent(url)}?w=${w}`;
+}
+
+function ytThumb(url) {
+  const m = url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([a-zA-Z0-9_-]{11})/);
+  return m ? `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg` : "";
+}
+
+function UploadPortfolioPanel({ onAdd }) {
+  const imgInputRef = useRef(null);
+  const videoInputRef = useRef(null);
+
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("General");
+  const [videoUrl, setVideoUrl] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+
+  const [images, setImages] = useState([]); // [{file, preview}]
+  const [videos, setVideos] = useState([]); // {file}
+  const [dragImg, setDragImg] = useState(false);
+  const [dragVid, setDragVid] = useState(false);
+
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState({ done: 0, total: 0, msg: "" });
+  const [results, setResults] = useState([]);
+
+  // YouTube upload is not wired up in this project — keep the same UI shape
+  // as the reference design; the button is a hint only.
+  const ytConnected = false;
+
+  function addImages(fileList) {
+    const files = [...fileList].filter((f) => f.type.startsWith("image/"));
+    setImages((prev) => [
+      ...prev,
+      ...files.map((f) => ({ file: f, preview: URL.createObjectURL(f) })),
+    ]);
+    setResults([]);
+  }
+
+  function addVideos(fileList) {
+    const files = [...fileList].filter((f) => f.type.startsWith("video/"));
+    setVideos((prev) => [...prev, ...files.map((f) => ({ file: f }))]);
+    setResults([]);
+  }
+
+  function removeImage(i) {
+    setImages((prev) => {
+      URL.revokeObjectURL(prev[i].preview);
+      return prev.filter((_, idx) => idx !== i);
+    });
+  }
+
+  function removeVideo(i) {
+    setVideos((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
+  async function handleUploadImages() {
+    if (images.length === 0) return;
+    setUploading(true);
+    setProgress({ done: 0, total: images.length, msg: "" });
+    const next = [];
+    for (let i = 0; i < images.length; i++) {
+      const { file } = images[i];
+      setProgress({ done: i, total: images.length, msg: `Uploading image ${i + 1}/${images.length}...` });
+      try {
+        const url = await uploadFile(file);
+        const baseName = file.name.replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " ").trim();
+        onAdd({
+          title: title.trim() || baseName,
+          description: "",
+          image: url,
+          category,
+          videoUrl: videoUrl.trim() || "",
+          websiteUrl: websiteUrl.trim() || "",
+        });
+        next.push({ type: "image", name: file.name, status: "ok" });
+      } catch (err) {
+        next.push({ type: "image", name: file.name, status: "err", message: err.message });
+      }
+      setProgress((p) => ({ ...p, done: i + 1 }));
+    }
+    images.forEach((img) => URL.revokeObjectURL(img.preview));
+    setImages([]);
+    setResults(next);
+    setUploading(false);
+  }
+
+  async function handleUploadVideos() {
+    // No YouTube backend — support the Video URL flow only (thumbnail-only entry).
+    const url = videoUrl.trim();
+    if (!url) {
+      alert("Enter a YouTube / Vimeo URL in the Video URL field. Direct video file uploads are not configured on this site.");
+      return;
+    }
+    setUploading(true);
+    setProgress({ done: 0, total: 1, msg: "Saving video entry..." });
+    const thumb = ytThumb(url);
+    try {
+      onAdd({
+        title: title.trim() || "Video",
+        description: "",
+        image: thumb,
+        category,
+        videoUrl: url,
+        websiteUrl: "",
+      });
+      setResults([{ type: "video", name: url, status: "ok", videoUrl: url }]);
+      setVideoUrl("");
+      setVideos([]);
+    } catch (err) {
+      setResults([{ type: "video", name: url, status: "err", message: err.message }]);
+    }
+    setProgress({ done: 1, total: 1, msg: "" });
+    setUploading(false);
+  }
+
+  function handleAddWebsite() {
+    const url = websiteUrl.trim();
+    if (!url) return;
+    let host = url;
+    try {
+      host = new URL(url.startsWith("http") ? url : `https://${url}`).hostname.replace(/^www\./, "");
+    } catch { /* keep raw */ }
+    onAdd({
+      title: title.trim() || host,
+      description: "",
+      image: shotUrl(url),
+      category: "Website Design",
+      websiteUrl: url,
+      videoUrl: "",
+    });
+    setResults([{ type: "website", name: host, status: "ok", websiteUrl: url }]);
+    setWebsiteUrl("");
+  }
+
+  const canImages  = images.length > 0 && !uploading;
+  const canVideos  = (videos.length > 0 || videoUrl.trim().length > 0) && !uploading;
+  const canWebsite = websiteUrl.trim().length > 0 && !uploading;
+  const okCount    = results.filter((r) => r.status === "ok").length;
+  const errCount   = results.filter((r) => r.status === "err").length;
+
+  return (
+    <div className="upload-panel">
+      <div className="panel-head">
+        <h2>Upload Portfolio</h2>
+        <p>Images auto-compressed to WebP · Videos stored directly</p>
+      </div>
+
+      <div className="up-fields">
+        <div className="up-field">
+          <label>Title <span className="opt">(optional)</span></label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Leave blank to use filename"
+          />
+        </div>
+        <div className="up-field">
+          <label>📂 Category</label>
+          <select value={category} onChange={(e) => setCategory(e.target.value)}>
+            {UPLOAD_CATEGORIES.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+        <div className="up-field">
+          <label>🎬 Video URL <span className="opt">(YouTube / Vimeo link)</span></label>
+          <input
+            type="url"
+            value={videoUrl}
+            onChange={(e) => setVideoUrl(e.target.value)}
+            placeholder="https://www.youtube.com/watch?v=..."
+            className={videoUrl ? "violet-text" : ""}
+          />
+        </div>
+      </div>
+
+      <div className="up-website-row">
+        <div className="up-field">
+          <label>🌐 Website URL <span className="opt">(live site — its home page is captured automatically)</span></label>
+          <input
+            type="url"
+            value={websiteUrl}
+            onChange={(e) => setWebsiteUrl(e.target.value)}
+            placeholder="https://example.com"
+            className={websiteUrl ? "green-text" : ""}
+          />
+        </div>
+        <button
+          className="up-website-btn"
+          onClick={handleAddWebsite}
+          disabled={!canWebsite}
+        >
+          🌐 Add Website
+        </button>
+      </div>
+
+      {websiteUrl.trim() && (
+        <div className="up-site-preview">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={shotUrl(websiteUrl.trim())} alt="Home page preview" />
+          <span>
+            Home page preview — saved to the <strong>Website Design</strong> category and opens in a new tab on the site.
+          </span>
+        </div>
+      )}
+
+      <div className="up-divider" />
+
+      <div className="up-zones">
+        {/* Images */}
+        <div className="up-zone-col">
+          <div
+            className={`up-drop${dragImg ? " dragging" : ""}`}
+            onClick={() => imgInputRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); setDragImg(true); }}
+            onDragLeave={() => setDragImg(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragImg(false);
+              addImages(e.dataTransfer.files);
+            }}
+          >
+            <div className="icon">🖼️</div>
+            <p className="title">Drop Images Here</p>
+            <p className="sub">JPG · PNG · WebP</p>
+            <input
+              ref={imgInputRef}
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={(e) => { addImages(e.target.files); e.target.value = ""; }}
+              hidden
+            />
+          </div>
+          {images.length > 0 && (
+            <div className="up-preview-grid">
+              {images.map((img, i) => (
+                <div key={i} className="up-preview-card">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={img.preview} alt="" />
+                  <button className="x" onClick={() => removeImage(i)}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+          {images.length > 0 && (
+            <p className="up-count">🖼️ {images.length} image{images.length !== 1 ? "s" : ""} selected</p>
+          )}
+        </div>
+
+        {/* Videos */}
+        <div className="up-zone-col">
+          <div className="yt-row">
+            {ytConnected ? (
+              <span className="yt-ok">✅ YouTube Connected</span>
+            ) : (
+              <>
+                <span className="yt-warn">⚠️ YouTube not connected</span>
+                <button
+                  className="yt-btn"
+                  onClick={() =>
+                    alert("Direct video uploads are not configured on this site.\n\nUse the Video URL field to add a YouTube / Vimeo link instead.")
+                  }
+                >
+                  🔗 Connect YouTube
+                </button>
+              </>
+            )}
+          </div>
+          <div
+            className={`up-drop${dragVid ? " dragging" : ""}${ytConnected ? "" : " disabled"}`}
+            onClick={() => {
+              if (!ytConnected) {
+                alert("Direct video uploads are not configured on this site.\n\nUse the Video URL field to add a YouTube / Vimeo link instead.");
+                return;
+              }
+              videoInputRef.current?.click();
+            }}
+            onDragOver={(e) => { e.preventDefault(); setDragVid(true); }}
+            onDragLeave={() => setDragVid(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragVid(false);
+              if (ytConnected) addVideos(e.dataTransfer.files);
+            }}
+          >
+            <div className="icon">🎬</div>
+            <p className="title">Drop Videos Here</p>
+            <p className="sub">MP4 · MOV · WEBM</p>
+            <input
+              ref={videoInputRef}
+              type="file"
+              multiple
+              accept="video/*"
+              onChange={(e) => { addVideos(e.target.files); e.target.value = ""; }}
+              hidden
+            />
+          </div>
+          {videos.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+              {videos.map((v, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    background: "var(--panel-2)",
+                    border: "1px solid var(--line)",
+                    borderRadius: 8,
+                    padding: "8px 12px",
+                  }}
+                >
+                  <span style={{ fontSize: 18 }}>🎬</span>
+                  <span style={{ flex: 1, color: "#a8b8f5", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {v.file.name}
+                  </span>
+                  <span style={{ color: "#5c68a0", fontSize: 12 }}>{(v.file.size / 1024 / 1024).toFixed(1)} MB</span>
+                  <button className="x" onClick={() => removeVideo(i)} style={{ position: "static" }}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+          {videos.length > 0 && (
+            <p className="up-count" style={{ color: "#c4b5fd" }}>
+              🎬 {videos.length} video{videos.length !== 1 ? "s" : ""} selected
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="up-actions">
+        <button className="up-btn images" onClick={handleUploadImages} disabled={!canImages}>
+          {uploading && progress.msg?.includes("image")
+            ? `⏳ ${progress.done}/${progress.total}`
+            : `🖼️ Upload Images${images.length > 0 ? ` (${images.length})` : ""}`}
+        </button>
+        <button className="up-btn videos" onClick={handleUploadVideos} disabled={!canVideos}>
+          {uploading && progress.msg?.includes("video")
+            ? `⏳ ${progress.done}/${progress.total}`
+            : `🎬 Upload Videos${videos.length > 0 ? ` (${videos.length})` : ""}`}
+        </button>
+      </div>
+
+      {uploading && (
+        <div className="up-progress">
+          <div className="bar">
+            <div className="fill" style={{ width: `${(progress.done / (progress.total || 1)) * 100}%` }} />
+          </div>
+          <p className="msg">{progress.msg}</p>
+        </div>
+      )}
+
+      {results.length > 0 && (
+        <div className="up-results">
+          {okCount > 0 && <p className="ok">✅ {okCount} added successfully</p>}
+          {errCount > 0 && <p className="err">❌ {errCount} failed</p>}
+          {results.map((r, i) =>
+            r.status === "ok" ? (
+              <p key={i}>
+                {r.type === "image" ? "🖼️" : r.type === "video" ? "🎬" : "🌐"} {r.name}
+                {" · "}
+                <span style={{ color: "#a8b8f5" }}>{r.type === "website" ? "Website Design" : category}</span>
+              </p>
+            ) : (
+              <p key={i} style={{ color: "#f87171" }}>
+                ✗ {r.name}: {r.message}
+              </p>
+            )
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const NAV_GROUPS = [
   {
     label: "Main Menu",
@@ -795,19 +1190,22 @@ export default function AdminDashboard() {
           )}
 
           {activeTab === "projects" && (
-            <MediaGrid
-              items={content.projects || []}
-              fields={[
-                { key: "title", placeholder: "Title" },
-                { key: "category", placeholder: "Category (used by the filter)" },
-                { key: "description", placeholder: "Description", type: "textarea" },
-              ]}
-              blank={{ title: "", category: "", description: "", image: "" }}
-              categoryKey="category"
-              onAdd={(item) => addListItem("projects", item)}
-              onUpdate={(i, field, value) => updateListItem("projects", i, field, value)}
-              onRemoveMany={(indexes) => removeListItems("projects", indexes)}
-            />
+            <>
+              <UploadPortfolioPanel onAdd={(item) => addListItem("projects", item)} />
+              <MediaGrid
+                items={content.projects || []}
+                fields={[
+                  { key: "title", placeholder: "Title" },
+                  { key: "category", placeholder: "Category (used by the filter)" },
+                  { key: "description", placeholder: "Description", type: "textarea" },
+                ]}
+                blank={{ title: "", category: "", description: "", image: "" }}
+                categoryKey="category"
+                onAdd={(item) => addListItem("projects", item)}
+                onUpdate={(i, field, value) => updateListItem("projects", i, field, value)}
+                onRemoveMany={(indexes) => removeListItems("projects", indexes)}
+              />
+            </>
           )}
 
           {activeTab === "gallery" && (
