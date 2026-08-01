@@ -18,7 +18,7 @@ export default function CaseStudy() {
           <svg viewBox="0 0 300 90" style={{ width: "100%", marginTop: 8 }}>
             <polyline
               fill="none"
-              stroke="#7c3aed"
+              stroke="#0c133b"
               strokeWidth="2.5"
               points="0,75 45,60 90,66 135,42 180,48 225,26 270,18 300,8"
             />
@@ -29,8 +29,8 @@ export default function CaseStudy() {
             />
             <defs>
               <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor="#7c3aed" stopOpacity="0.25" />
-                <stop offset="1" stopColor="#7c3aed" stopOpacity="0" />
+                <stop offset="0" stopColor="#0c133b" stopOpacity="0.25" />
+                <stop offset="1" stopColor="#0c133b" stopOpacity="0" />
               </linearGradient>
             </defs>
           </svg>
@@ -47,7 +47,7 @@ export default function CaseStudy() {
                   borderRadius: 4,
                   background:
                     i % 2 === 0
-                      ? "linear-gradient(180deg,#8b5cf6,#7c3aed)"
+                      ? "linear-gradient(180deg,#1d2a6b,#0c133b)"
                       : "linear-gradient(180deg,#fb923c,#f97316)",
                 }}
               />

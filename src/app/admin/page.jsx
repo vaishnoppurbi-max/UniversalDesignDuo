@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { compressImage } from "./imageUtils";
 import "./admin.css";
@@ -11,14 +11,40 @@ function formatBytes(bytes) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-const TABS = [
-  { key: "hero", label: "Hero" },
-  { key: "services", label: "Services" },
-  { key: "projects", label: "Portfolio" },
-  { key: "testimonials", label: "Testimonials" },
-  { key: "gallery", label: "Gallery" },
-  { key: "blog", label: "Blog" },
-  { key: "contact", label: "Contact" },
+async function uploadFile(file) {
+  const compressed = await compressImage(file);
+  const formData = new FormData();
+  formData.append("file", compressed);
+  const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Upload failed");
+  }
+  const data = await res.json();
+  return data.url;
+}
+
+const NAV_GROUPS = [
+  {
+    label: "Main Menu",
+    tabs: [
+      { key: "hero", label: "Hero", icon: "▦" },
+      { key: "projects", label: "Portfolio", icon: "🖼" },
+      { key: "gallery", label: "Gallery", icon: "📷" },
+    ],
+  },
+  {
+    label: "Management",
+    tabs: [
+      { key: "services", label: "Services", icon: "✦" },
+      { key: "testimonials", label: "Testimonials", icon: "❝" },
+      { key: "blog", label: "Blog Posts", icon: "✎" },
+    ],
+  },
+  {
+    label: "System",
+    tabs: [{ key: "contact", label: "Contact Info", icon: "✉" }],
+  },
 ];
 
 function ImageField({ label, value, onChange }) {
@@ -31,25 +57,12 @@ function ImageField({ label, value, onChange }) {
     setUploading(true);
     setInfo(null);
     try {
-      const compressed = await compressImage(file);
-      const formData = new FormData();
-      formData.append("file", compressed);
-      const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
-      if (res.ok) {
-        const data = await res.json();
-        onChange(data.url);
-        const saved = file.size - compressed.size;
-        setInfo(
-          saved > 0
-            ? `Optimized ${formatBytes(file.size)} → ${formatBytes(compressed.size)}`
-            : `Uploaded ${formatBytes(compressed.size)}`
-        );
-      } else {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || "Upload failed");
-      }
-    } catch {
-      alert("Upload failed");
+      const before = file.size;
+      const url = await uploadFile(file);
+      onChange(url);
+      setInfo(`Uploaded (${formatBytes(before)})`);
+    } catch (err) {
+      alert(err.message);
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -92,6 +105,179 @@ function ImageField({ label, value, onChange }) {
   );
 }
 
+/**
+ * Bulk image library — grid of tiles with multi-file upload, drag & drop,
+ * search, select-all and bulk delete. Used for Portfolio and Gallery.
+ */
+function MediaGrid({ items, fields, blank, onAdd, onUpdate, onRemoveMany }) {
+  const inputRef = useRef(null);
+  const [selected, setSelected] = useState(() => new Set());
+  const [query, setQuery] = useState("");
+  const [dragging, setDragging] = useState(false);
+  const [progress, setProgress] = useState(null);
+
+  const searchable = (item) =>
+    fields
+      .map((f) => item[f.key] || "")
+      .join(" ")
+      .toLowerCase();
+
+  const visible = items
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => !query || searchable(item).includes(query.toLowerCase()));
+
+  function toggle(index) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }
+
+  const allVisibleSelected =
+    visible.length > 0 && visible.every(({ index }) => selected.has(index));
+
+  function toggleAll() {
+    setSelected(allVisibleSelected ? new Set() : new Set(visible.map((v) => v.index)));
+  }
+
+  function deleteSelected() {
+    if (selected.size === 0) return;
+    if (!confirm(`Remove ${selected.size} item${selected.size > 1 ? "s" : ""}?`)) return;
+    onRemoveMany([...selected]);
+    setSelected(new Set());
+  }
+
+  async function handleFiles(fileList) {
+    const files = [...fileList].filter((f) => f.type.startsWith("image/"));
+    if (files.length === 0) return;
+
+    const failures = [];
+    for (let i = 0; i < files.length; i++) {
+      setProgress(`Uploading ${i + 1} of ${files.length}...`);
+      try {
+        const url = await uploadFile(files[i]);
+        onAdd({ ...blank, image: url });
+      } catch {
+        failures.push(files[i].name);
+      }
+    }
+    setProgress(null);
+    if (failures.length) alert(`Failed to upload: ${failures.join(", ")}`);
+  }
+
+  return (
+    <>
+      <div className="media-toolbar">
+        <label className="select-all">
+          <input type="checkbox" checked={allVisibleSelected} onChange={toggleAll} />
+          Select all ({visible.length})
+        </label>
+        {selected.size > 0 && (
+          <button className="btn btn-danger" onClick={deleteSelected}>
+            Delete selected ({selected.size})
+          </button>
+        )}
+        <button className="btn btn-primary" onClick={() => inputRef.current?.click()}>
+          + Upload images
+        </button>
+        {progress && <span className="upload-info">{progress}</span>}
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          hidden
+          onChange={(e) => {
+            handleFiles(e.target.files);
+            e.target.value = "";
+          }}
+        />
+        <input
+          className="search"
+          type="text"
+          placeholder="Search..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
+
+      <div className="media-grid">
+        <div
+          className={`dropzone${dragging ? " dragging" : ""}`}
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            handleFiles(e.dataTransfer.files);
+          }}
+        >
+          <span className="big">＋</span>
+          Drop images here
+          <small>or click to browse — multiple files supported</small>
+        </div>
+
+        {visible.map(({ item, index }) => (
+          <div
+            className={`media-tile${selected.has(index) ? " selected" : ""}`}
+            key={index}
+          >
+            <input
+              className="tick"
+              type="checkbox"
+              checked={selected.has(index)}
+              onChange={() => toggle(index)}
+            />
+            <button
+              className="tile-del"
+              title="Remove"
+              onClick={() => onRemoveMany([index])}
+            >
+              ✕
+            </button>
+            {item.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img className="thumb" src={item.image} alt={item.title || ""} />
+            ) : (
+              <div className="thumb empty">No image</div>
+            )}
+            <div className="tile-body">
+              {fields.map((f) =>
+                f.type === "textarea" ? (
+                  <textarea
+                    key={f.key}
+                    value={item[f.key] || ""}
+                    placeholder={f.placeholder}
+                    onChange={(e) => onUpdate(index, f.key, e.target.value)}
+                  />
+                ) : (
+                  <input
+                    key={f.key}
+                    type="text"
+                    value={item[f.key] || ""}
+                    placeholder={f.placeholder}
+                    onChange={(e) => onUpdate(index, f.key, e.target.value)}
+                  />
+                )
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {items.length === 0 && (
+        <p className="empty-note">Nothing here yet — upload your first images above.</p>
+      )}
+    </>
+  );
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [content, setContent] = useState(null);
@@ -125,9 +311,7 @@ export default function AdminDashboard() {
     });
     setSaving(false);
     setStatus(
-      res.ok
-        ? { type: "ok", text: "Saved" }
-        : { type: "error", text: "Failed to save" }
+      res.ok ? { type: "ok", text: "Saved" } : { type: "error", text: "Failed to save" }
     );
   }
 
@@ -158,6 +342,14 @@ export default function AdminDashboard() {
     }));
   }
 
+  function removeListItems(listKey, indexes) {
+    const drop = new Set(indexes);
+    setContent((c) => ({
+      ...c,
+      [listKey]: (c[listKey] || []).filter((_, i) => !drop.has(i)),
+    }));
+  }
+
   if (!content) {
     return (
       <div className="admin">
@@ -166,103 +358,183 @@ export default function AdminDashboard() {
     );
   }
 
+  const counts = {
+    projects: (content.projects || []).length,
+    gallery: (content.gallery || []).length,
+    services: (content.services || []).length,
+    testimonials: (content.testimonials || []).length,
+    blog: (content.blog || []).length,
+  };
+
+  const HEADINGS = {
+    hero: ["Hero", "The main banner shown at the top of the homepage."],
+    projects: ["Portfolio", `${counts.projects} images total`],
+    gallery: ["Gallery", `${counts.gallery} images total`],
+    services: ["Services", "The service cards shown on the homepage."],
+    testimonials: ["Testimonials", "Client quotes shown on the homepage."],
+    blog: ["Blog Posts", "Posts shown on the homepage and the Blog page."],
+    contact: ["Contact Info", "Shown in the mobile menu and used across the site."],
+  };
+
+  const [heading, subtitle] = HEADINGS[activeTab];
+
   return (
     <div className="admin">
-      <div className="admin-topbar">
-        <div className="brand">
-          <img src="/assets/img/logo/logo-dark.png" alt="Universal Design Duo" />
-          Admin Dashboard
-        </div>
-        <div className="actions">
-          <a href="/" target="_blank" rel="noreferrer" className="btn btn-ghost">
-            View site ↗
-          </a>
-          <button className="btn btn-ghost" onClick={handleLogout}>
-            Logout
-          </button>
-        </div>
-      </div>
+      <div className="admin-shell">
+        <aside className="admin-sidebar">
+          <div className="sidebar-brand">
+            <span className="logo-badge">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/assets/img/logo/logo-dark.png" alt="" />
+            </span>
+            <span>
+              <span className="name">Universal Design Duo</span>
+              <span className="role">Admin Panel</span>
+            </span>
+          </div>
 
-      <div className="admin-body">
-        <nav className="admin-nav">
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              className={activeTab === tab.key ? "active" : ""}
-              onClick={() => setActiveTab(tab.key)}
-            >
-              {tab.label}
+          <div className="sidebar-user">
+            <span className="avatar">UD</span>
+            <span className="who">
+              <strong>Administrator</strong>
+              <span>Signed in</span>
+            </span>
+          </div>
+
+          <nav className="admin-nav">
+            {NAV_GROUPS.map((group) => (
+              <div className="nav-group" key={group.label}>
+                <div className="group-label">{group.label}</div>
+                {group.tabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    className={activeTab === tab.key ? "active" : ""}
+                    onClick={() => setActiveTab(tab.key)}
+                  >
+                    <span className="ico">{tab.icon}</span>
+                    {tab.label}
+                    {counts[tab.key] > 0 && (
+                      <span className="nav-pill">{counts[tab.key]}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </nav>
+
+          <div className="sidebar-foot">
+            <a href="/" target="_blank" rel="noreferrer">
+              🌐 View Website
+            </a>
+            <button className="logout" onClick={handleLogout}>
+              ⏻ Logout
             </button>
-          ))}
-        </nav>
+          </div>
+        </aside>
 
-        <div className="admin-content">
+        <main className="admin-main">
+          <div className="page-head">
+            <div>
+              <h1>{heading}</h1>
+              <p className="subtitle">{subtitle}</p>
+            </div>
+            <div className="head-actions">
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                {saving ? "Saving..." : "Save changes"}
+              </button>
+              {status && (
+                <span className={`save-status ${status.type === "error" ? "error" : ""}`}>
+                  {status.text}
+                </span>
+              )}
+            </div>
+          </div>
+
           {activeTab === "hero" && (
-            <>
-              <h1>Hero Section</h1>
-              <p className="subtitle">The main banner shown at the top of the homepage.</p>
-              <div className="card">
-                <h2>Headline</h2>
-                <div className="field">
-                  <label>Title line 1</label>
-                  <input
-                    type="text"
-                    value={content.hero.titleLine1}
-                    onChange={(e) => updateHero("titleLine1", e.target.value)}
-                  />
-                </div>
-                <div className="field">
-                  <label>Title line 2</label>
-                  <input
-                    type="text"
-                    value={content.hero.titleLine2}
-                    onChange={(e) => updateHero("titleLine2", e.target.value)}
-                  />
-                </div>
-                <div className="field-row">
-                  <div className="field">
-                    <label>Highlighted word (orange)</label>
-                    <input
-                      type="text"
-                      value={content.hero.titleHighlight}
-                      onChange={(e) => updateHero("titleHighlight", e.target.value)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label>Highlighted word 2 (violet)</label>
-                    <input
-                      type="text"
-                      value={content.hero.titleHighlight2 || ""}
-                      onChange={(e) => updateHero("titleHighlight2", e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="field">
-                  <label>Subtitle</label>
-                  <textarea
-                    value={content.hero.subtitle}
-                    onChange={(e) => updateHero("subtitle", e.target.value)}
-                  />
-                </div>
-                <ImageField
-                  label="Hero side image"
-                  value={content.hero.bannerImage}
-                  onChange={(url) => updateHero("bannerImage", url)}
-                />
-                <ImageField
-                  label="Hero background banner"
-                  value={content.hero.backgroundImage}
-                  onChange={(url) => updateHero("backgroundImage", url)}
+            <div className="card">
+              <h2>Headline</h2>
+              <div className="field">
+                <label>Title line 1</label>
+                <input
+                  type="text"
+                  value={content.hero.titleLine1}
+                  onChange={(e) => updateHero("titleLine1", e.target.value)}
                 />
               </div>
-            </>
+              <div className="field">
+                <label>Title line 2</label>
+                <input
+                  type="text"
+                  value={content.hero.titleLine2}
+                  onChange={(e) => updateHero("titleLine2", e.target.value)}
+                />
+              </div>
+              <div className="field-row">
+                <div className="field">
+                  <label>Highlighted word (orange)</label>
+                  <input
+                    type="text"
+                    value={content.hero.titleHighlight}
+                    onChange={(e) => updateHero("titleHighlight", e.target.value)}
+                  />
+                </div>
+                <div className="field">
+                  <label>Highlighted word 2 (violet)</label>
+                  <input
+                    type="text"
+                    value={content.hero.titleHighlight2 || ""}
+                    onChange={(e) => updateHero("titleHighlight2", e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="field">
+                <label>Subtitle</label>
+                <textarea
+                  value={content.hero.subtitle}
+                  onChange={(e) => updateHero("subtitle", e.target.value)}
+                />
+              </div>
+              <ImageField
+                label="Hero side image"
+                value={content.hero.bannerImage}
+                onChange={(url) => updateHero("bannerImage", url)}
+              />
+              <ImageField
+                label="Hero background banner"
+                value={content.hero.backgroundImage}
+                onChange={(url) => updateHero("backgroundImage", url)}
+              />
+            </div>
+          )}
+
+          {activeTab === "projects" && (
+            <MediaGrid
+              items={content.projects || []}
+              fields={[
+                { key: "title", placeholder: "Title" },
+                { key: "description", placeholder: "Description", type: "textarea" },
+              ]}
+              blank={{ title: "", description: "", image: "" }}
+              onAdd={(item) => addListItem("projects", item)}
+              onUpdate={(i, field, value) => updateListItem("projects", i, field, value)}
+              onRemoveMany={(indexes) => removeListItems("projects", indexes)}
+            />
+          )}
+
+          {activeTab === "gallery" && (
+            <MediaGrid
+              items={content.gallery || []}
+              fields={[{ key: "caption", placeholder: "Caption (shown on hover)" }]}
+              blank={{ image: "", caption: "" }}
+              onAdd={(item) => addListItem("gallery", item)}
+              onUpdate={(i, field, value) => updateListItem("gallery", i, field, value)}
+              onRemoveMany={(indexes) => removeListItems("gallery", indexes)}
+            />
           )}
 
           {activeTab === "services" && (
             <>
-              <h1>Services</h1>
-              <p className="subtitle">The three service cards on the homepage.</p>
-              {content.services.map((service, i) => (
+              {(content.services || []).map((service, i) => (
                 <div className="item-card" key={i}>
                   {content.services.length > 1 && (
                     <button
@@ -293,67 +565,18 @@ export default function AdminDashboard() {
               ))}
               <button
                 className="add-item-btn"
-                onClick={() => addListItem("services", { title: "New Service", description: "" })}
+                onClick={() =>
+                  addListItem("services", { title: "New Service", description: "" })
+                }
               >
                 + Add service
               </button>
             </>
           )}
 
-          {activeTab === "projects" && (
-            <>
-              <h1>Portfolio</h1>
-              <p className="subtitle">Portfolio items shown in the portfolio grid.</p>
-              {content.projects.map((project, i) => (
-                <div className="item-card" key={i}>
-                  {content.projects.length > 1 && (
-                    <button
-                      className="remove-btn"
-                      onClick={() => removeListItem("projects", i)}
-                    >
-                      Remove
-                    </button>
-                  )}
-                  <div className="field">
-                    <label>Title</label>
-                    <input
-                      type="text"
-                      value={project.title}
-                      onChange={(e) => updateListItem("projects", i, "title", e.target.value)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label>Description</label>
-                    <textarea
-                      value={project.description}
-                      onChange={(e) =>
-                        updateListItem("projects", i, "description", e.target.value)
-                      }
-                    />
-                  </div>
-                  <ImageField
-                    label="Portfolio image"
-                    value={project.image}
-                    onChange={(url) => updateListItem("projects", i, "image", url)}
-                  />
-                </div>
-              ))}
-              <button
-                className="add-item-btn"
-                onClick={() =>
-                  addListItem("projects", { title: "New Portfolio Item", description: "", image: "" })
-                }
-              >
-                + Add portfolio item
-              </button>
-            </>
-          )}
-
           {activeTab === "testimonials" && (
             <>
-              <h1>Testimonials</h1>
-              <p className="subtitle">Client quotes shown on the homepage.</p>
-              {content.testimonials.map((t, i) => (
+              {(content.testimonials || []).map((t, i) => (
                 <div className="item-card" key={i}>
                   {content.testimonials.length > 1 && (
                     <button
@@ -396,7 +619,12 @@ export default function AdminDashboard() {
               <button
                 className="add-item-btn"
                 onClick={() =>
-                  addListItem("testimonials", { name: "New Client", role: "", quote: "", avatar: "" })
+                  addListItem("testimonials", {
+                    name: "New Client",
+                    role: "",
+                    quote: "",
+                    avatar: "",
+                  })
                 }
               >
                 + Add testimonial
@@ -404,56 +632,9 @@ export default function AdminDashboard() {
             </>
           )}
 
-          {activeTab === "gallery" && (
-            <>
-              <h1>Gallery</h1>
-              <p className="subtitle">
-                Photos shown on the Gallery page. Upload images (auto-optimized
-                to WebP) and add an optional caption.
-              </p>
-              {(content.gallery || []).map((g, i) => (
-                <div className="item-card" key={i}>
-                  <button
-                    className="remove-btn"
-                    onClick={() => removeListItem("gallery", i)}
-                  >
-                    Remove
-                  </button>
-                  <ImageField
-                    label="Image"
-                    value={g.image}
-                    onChange={(url) => updateListItem("gallery", i, "image", url)}
-                  />
-                  <div className="field">
-                    <label>Caption</label>
-                    <input
-                      type="text"
-                      value={g.caption || ""}
-                      placeholder="Shown on hover (optional)"
-                      onChange={(e) =>
-                        updateListItem("gallery", i, "caption", e.target.value)
-                      }
-                    />
-                  </div>
-                </div>
-              ))}
-              <button
-                className="add-item-btn"
-                onClick={() => addListItem("gallery", { image: "", caption: "" })}
-              >
-                + Add gallery image
-              </button>
-            </>
-          )}
-
           {activeTab === "blog" && (
             <>
-              <h1>Blog Posts</h1>
-              <p className="subtitle">
-                Manage blog posts shown on the homepage and the Blog page. Upload a
-                featured image for each post — images are auto-optimized to WebP.
-              </p>
-              {content.blog.map((post, i) => (
+              {(content.blog || []).map((post, i) => (
                 <div className="item-card" key={i}>
                   {content.blog.length > 1 && (
                     <button className="remove-btn" onClick={() => removeListItem("blog", i)}>
@@ -539,36 +720,32 @@ export default function AdminDashboard() {
           )}
 
           {activeTab === "contact" && (
-            <>
-              <h1>Contact Info</h1>
-              <p className="subtitle">Shown in the mobile menu and used across the site.</p>
-              <div className="card">
-                <div className="field">
-                  <label>Address</label>
-                  <input
-                    type="text"
-                    value={content.contact.address}
-                    onChange={(e) => updateContact("address", e.target.value)}
-                  />
-                </div>
-                <div className="field">
-                  <label>Phone</label>
-                  <input
-                    type="text"
-                    value={content.contact.phone}
-                    onChange={(e) => updateContact("phone", e.target.value)}
-                  />
-                </div>
-                <div className="field">
-                  <label>Email</label>
-                  <input
-                    type="text"
-                    value={content.contact.email}
-                    onChange={(e) => updateContact("email", e.target.value)}
-                  />
-                </div>
+            <div className="card">
+              <div className="field">
+                <label>Address</label>
+                <input
+                  type="text"
+                  value={content.contact.address}
+                  onChange={(e) => updateContact("address", e.target.value)}
+                />
               </div>
-            </>
+              <div className="field">
+                <label>Phone</label>
+                <input
+                  type="text"
+                  value={content.contact.phone}
+                  onChange={(e) => updateContact("phone", e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label>Email</label>
+                <input
+                  type="text"
+                  value={content.contact.email}
+                  onChange={(e) => updateContact("email", e.target.value)}
+                />
+              </div>
+            </div>
           )}
 
           <div className="save-row">
@@ -581,7 +758,7 @@ export default function AdminDashboard() {
               </span>
             )}
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );
