@@ -99,6 +99,9 @@
     "phone": "+01 569 896 654",
     "email": "info@example.com"
   },
+  "settings": {
+    "googleSignInEnabled": true
+  },
   "gallery": [
     {
       "image": "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=800&h=600&q=80",

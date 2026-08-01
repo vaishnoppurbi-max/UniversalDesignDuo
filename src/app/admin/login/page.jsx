@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import Script from "next/script";
 import "../admin.css";
 
-const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-
 export default function AdminLoginPage() {
   const router = useRouter();
   const googleBtnRef = useRef(null);
@@ -14,6 +12,56 @@ export default function AdminLoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [gisReady, setGisReady] = useState(false);
+  const [googleClientId, setGoogleClientId] = useState("");
+  const [autoLoggingIn, setAutoLoggingIn] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/site-config")
+      .then((r) => r.json())
+      .then((cfg) => {
+        if (cfg.googleSignInEnabled && cfg.googleClientId) {
+          setGoogleClientId(cfg.googleClientId);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Auto-login on localhost: if already signed in, go to /admin; otherwise
+  // silently obtain a dev session so you don't have to type the password.
+  useEffect(() => {
+    const host = typeof window !== "undefined" ? window.location.hostname : "";
+    const isLocal = host === "localhost" || host === "127.0.0.1" || host.endsWith(".localhost");
+    if (!isLocal) return;
+
+    let cancelled = false;
+    (async () => {
+      setAutoLoggingIn(true);
+      try {
+        const meRes = await fetch("/api/admin/me");
+        if (cancelled) return;
+        if (meRes.ok) {
+          router.push("/admin");
+          router.refresh();
+          return;
+        }
+        const res = await fetch("/api/admin/auto-login", { method: "POST" });
+        if (cancelled) return;
+        if (res.ok) {
+          router.push("/admin");
+          router.refresh();
+          return;
+        }
+      } catch {
+        /* ignore — fall back to manual login */
+      } finally {
+        if (!cancelled) setAutoLoggingIn(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -55,11 +103,11 @@ export default function AdminLoginPage() {
   }
 
   useEffect(() => {
-    if (!gisReady || !GOOGLE_CLIENT_ID || !window.google || !googleBtnRef.current) {
+    if (!gisReady || !googleClientId || !window.google || !googleBtnRef.current) {
       return;
     }
     window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
+      client_id: googleClientId,
       callback: handleGoogleCredential,
     });
     window.google.accounts.id.renderButton(googleBtnRef.current, {
@@ -69,11 +117,11 @@ export default function AdminLoginPage() {
       text: "signin_with",
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gisReady]);
+  }, [gisReady, googleClientId]);
 
   return (
     <div className="admin admin-login-wrap">
-      {GOOGLE_CLIENT_ID && (
+      {googleClientId && (
         <Script
           src="https://accounts.google.com/gsi/client"
           strategy="afterInteractive"
@@ -84,7 +132,11 @@ export default function AdminLoginPage() {
         <img src="/assets/img/logo/logo-dark.png" alt="Universal Design Duo" />
         <h1>Admin Sign In</h1>
 
-        {GOOGLE_CLIENT_ID && (
+        {autoLoggingIn && (
+          <p className="auto-login-msg">Signing you in automatically…</p>
+        )}
+
+        {googleClientId && (
           <>
             <div ref={googleBtnRef} className="google-btn-slot" />
             <div className="login-divider">

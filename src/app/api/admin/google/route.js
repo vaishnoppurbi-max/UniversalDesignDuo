@@ -48,7 +48,12 @@ export async function POST(request) {
     );
   }
 
-  const token = await createSessionToken();
+  const token = await createSessionToken({
+    method: "google",
+    email: (info.email || "").toLowerCase(),
+    name: info.name || null,
+    picture: info.picture || null,
+  });
   const response = NextResponse.json({ ok: true });
   response.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,

@@ -37,33 +37,85 @@ function base64UrlToBytes(str) {
   return bytes;
 }
 
-export async function createSessionToken() {
-  const expires = Date.now() + MAX_AGE_SECONDS * 1000;
+function textToBase64Url(str) {
+  return bytesToBase64Url(new TextEncoder().encode(str));
+}
+
+function base64UrlToText(str) {
+  return new TextDecoder().decode(base64UrlToBytes(str));
+}
+
+/**
+ * Session token = base64url(JSON payload) + "." + base64url(HMAC signature).
+ * Payload: { exp, email, name, picture, method }
+ *   - method: "password" | "google"
+ *   - fields other than exp are optional (password login carries no identity)
+ * Backward compat: old "<expires>.<sig>" tokens (numeric first segment)
+ * still verify.
+ */
+export async function createSessionToken(user = {}) {
+  const payload = {
+    exp: Date.now() + MAX_AGE_SECONDS * 1000,
+    email: user.email || null,
+    name: user.name || null,
+    picture: user.picture || null,
+    method: user.method || "password",
+  };
+  const payloadB64 = textToBase64Url(JSON.stringify(payload));
   const key = await getKey();
-  const encoder = new TextEncoder();
-  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(String(expires)));
-  const sig = bytesToBase64Url(new Uint8Array(signature));
-  return `${expires}.${sig}`;
+  const sigBuf = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(payloadB64)
+  );
+  const sig = bytesToBase64Url(new Uint8Array(sigBuf));
+  return `${payloadB64}.${sig}`;
 }
 
 export async function verifySessionToken(token) {
-  if (!token || !token.includes(".")) return false;
-  const [expiresStr, sig] = token.split(".");
-  const expires = Number(expiresStr);
-  if (!expires || Date.now() > expires) return false;
+  const parsed = await readSessionToken(token);
+  return !!parsed;
+}
+
+export async function readSessionToken(token) {
+  if (!token || !token.includes(".")) return null;
+  const [head, sig] = token.split(".");
+  if (!head || !sig) return null;
 
   try {
     const key = await getKey();
-    const encoder = new TextEncoder();
-    const valid = await crypto.subtle.verify(
+
+    // Legacy format: "<millis>.<sig>" where signature was over the raw
+    // millis string. Verify then return an empty user record.
+    if (/^\d+$/.test(head)) {
+      const expires = Number(head);
+      if (!expires || Date.now() > expires) return null;
+      const ok = await crypto.subtle.verify(
+        "HMAC",
+        key,
+        base64UrlToBytes(sig),
+        new TextEncoder().encode(head)
+      );
+      return ok
+        ? { exp: expires, email: null, name: null, picture: null, method: "password" }
+        : null;
+    }
+
+    // New format: signature is over the base64url payload segment.
+    const ok = await crypto.subtle.verify(
       "HMAC",
       key,
       base64UrlToBytes(sig),
-      encoder.encode(expiresStr)
+      new TextEncoder().encode(head)
     );
-    return valid;
+    if (!ok) return null;
+    const payload = JSON.parse(base64UrlToText(head));
+    if (!payload || typeof payload.exp !== "number" || Date.now() > payload.exp) {
+      return null;
+    }
+    return payload;
   } catch {
-    return false;
+    return null;
   }
 }
 

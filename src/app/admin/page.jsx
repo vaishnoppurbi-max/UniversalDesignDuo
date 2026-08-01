@@ -446,7 +446,10 @@ const NAV_GROUPS = [
   },
   {
     label: "System",
-    tabs: [{ key: "contact", label: "Contact Info", icon: "✉" }],
+    tabs: [
+      { key: "contact", label: "Contact Info", icon: "✉" },
+      { key: "settings", label: "Settings", icon: "⚙" },
+    ],
   },
 ];
 
@@ -963,6 +966,7 @@ function MediaGrid({
 export default function AdminDashboard() {
   const router = useRouter();
   const [content, setContent] = useState(null);
+  const [me, setMe] = useState(null);
   const [activeTab, setActiveTab] = useState("hero");
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null);
@@ -975,6 +979,11 @@ export default function AdminDashboard() {
       })
       .then(setContent)
       .catch(() => setStatus({ type: "error", text: "Failed to load content" }));
+
+    fetch("/api/admin/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setMe)
+      .catch(() => {});
   }, []);
 
   async function handleLogout() {
@@ -1003,6 +1012,13 @@ export default function AdminDashboard() {
 
   function updateContact(field, value) {
     setContent((c) => ({ ...c, contact: { ...c.contact, [field]: value } }));
+  }
+
+  function updateSettings(field, value) {
+    setContent((c) => ({
+      ...c,
+      settings: { ...(c.settings || {}), [field]: value },
+    }));
   }
 
   function updateListItem(listKey, index, field, value) {
@@ -1056,6 +1072,7 @@ export default function AdminDashboard() {
     testimonials: ["Testimonials", "Client quotes shown on the homepage."],
     blog: ["Blog Posts", "Posts shown on the homepage and the Blog page."],
     contact: ["Contact Info", "Shown in the mobile menu and used across the site."],
+    settings: ["Settings", "Login-screen options and site-wide toggles."],
   };
 
   const [heading, subtitle] = HEADINGS[activeTab];
@@ -1076,10 +1093,30 @@ export default function AdminDashboard() {
           </div>
 
           <div className="sidebar-user">
-            <span className="avatar">UD</span>
+            {me?.picture ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img className="avatar avatar-img" src={me.picture} alt="" />
+            ) : (
+              <span className="avatar">
+                {(me?.name || me?.email || "UD")
+                  .split(/[\s@.]/)
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((s) => s[0].toUpperCase())
+                  .join("")}
+              </span>
+            )}
             <span className="who">
-              <strong>Administrator</strong>
-              <span>Signed in</span>
+              <strong>{me?.name || me?.email || "Administrator"}</strong>
+              <span title={me?.email || ""}>
+                {me?.isSuper
+                  ? "Super Admin"
+                  : me?.email
+                  ? "Admin"
+                  : me?.method === "password"
+                  ? "Signed in via password"
+                  : "Signed in"}
+              </span>
             </span>
           </div>
 
@@ -1437,6 +1474,106 @@ export default function AdminDashboard() {
                 />
               </div>
             </div>
+          )}
+
+          {activeTab === "settings" && (
+            <>
+              <div className="card">
+                <h2>Your Account</h2>
+                {me ? (
+                  <div className="account-row">
+                    {me.picture ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img className="account-avatar" src={me.picture} alt="" />
+                    ) : (
+                      <div className="account-avatar fallback">
+                        {(me.name || me.email || "UD")
+                          .split(/[\s@.]/)
+                          .filter(Boolean)
+                          .slice(0, 2)
+                          .map((s) => s[0].toUpperCase())
+                          .join("")}
+                      </div>
+                    )}
+                    <div className="account-body">
+                      <div className="account-name">
+                        {me.name || me.email || "Password login"}
+                        {me.isSuper && <span className="role-badge super">Super Admin</span>}
+                        {!me.isSuper && me.email && <span className="role-badge">Admin</span>}
+                      </div>
+                      {me.email && <div className="account-email">{me.email}</div>}
+                      <div className="account-meta">
+                        Signed in via <strong>{me.method === "google" ? "Google" : "Password"}</strong>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="muted">Loading account…</p>
+                )}
+              </div>
+
+              <div className="card">
+                <h2>Login Options</h2>
+                <label className="toggle-row">
+                  <input
+                    type="checkbox"
+                    checked={!!content.settings?.googleSignInEnabled}
+                    onChange={(e) => updateSettings("googleSignInEnabled", e.target.checked)}
+                    disabled={me && !me.isSuper}
+                  />
+                  <span className="toggle-body">
+                    <strong>Enable Google Sign-in</strong>
+                    <span className="toggle-sub">
+                      Show the &ldquo;Sign in with Google&rdquo; button on the admin login page.
+                      Requires <code>NEXT_PUBLIC_GOOGLE_CLIENT_ID</code> to be set in <code>.env.local</code>.
+                      {me && !me.isSuper && " Only the Super Admin can change this."}
+                    </span>
+                  </span>
+                </label>
+              </div>
+
+              <div className="card">
+                <h2>Admin Users</h2>
+                <p className="muted" style={{ marginTop: -8, marginBottom: 14 }}>
+                  Emails allowed to sign in via Google. Managed in <code>.env.local</code> via{" "}
+                  <code>ADMIN_EMAILS</code>. The Super Admin is set via <code>SUPER_ADMIN_EMAIL</code>.
+                </p>
+                <div className="user-list">
+                  {(me?.admins || []).map((email) => {
+                    const isSuper = email === me?.superAdmin;
+                    const isYou = email === (me?.email || "").toLowerCase();
+                    return (
+                      <div className="user-row" key={email}>
+                        <div className="user-avatar">
+                          {email
+                            .split(/[@.]/)
+                            .filter(Boolean)
+                            .slice(0, 2)
+                            .map((s) => s[0].toUpperCase())
+                            .join("")}
+                        </div>
+                        <div className="user-body">
+                          <div className="user-email">
+                            {email}
+                            {isSuper && <span className="role-badge super">Super Admin</span>}
+                            {!isSuper && <span className="role-badge">Admin</span>}
+                            {isYou && <span className="role-badge you">You</span>}
+                          </div>
+                          <div className="user-perms">
+                            {isSuper
+                              ? "Full access — can toggle login options and manage settings."
+                              : "Can edit site content (hero, portfolio, gallery, services, testimonials, blog, contact)."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {(!me?.admins || me.admins.length === 0) && (
+                    <p className="muted">No admin emails configured.</p>
+                  )}
+                </div>
+              </div>
+            </>
           )}
 
           <div className="save-row">
