@@ -47,32 +47,68 @@ export async function POST(request) {
   }
 
   const found = new Set();
+  const IMAGE_EXT = /\.(png|jpe?g|webp|gif|avif|svg)(\?|#|$)/i;
+
   const push = (raw) => {
     if (!raw) return;
     const cleaned = raw.trim().replace(/&amp;/g, "&");
     if (!cleaned || cleaned.startsWith("data:")) return;
     try {
       const abs = new URL(cleaned, target.href).href;
-      if (/\.(png|jpe?g|webp|gif|avif)(\?|#|$)/i.test(abs)) found.add(abs);
+      if (IMAGE_EXT.test(abs)) found.add(abs);
     } catch {
       /* skip unparseable */
     }
   };
 
-  // <img src>, lazy-load attributes, srcset candidates and og:image tags.
+  // 1. <img src>, lazy-load variants, srcset candidates
   for (const m of html.matchAll(/<img[^>]+>/gi)) {
     const tag = m[0];
     push(tag.match(/\ssrc=["']([^"']+)["']/i)?.[1]);
     push(tag.match(/\sdata-src=["']([^"']+)["']/i)?.[1]);
     push(tag.match(/\sdata-lazy-src=["']([^"']+)["']/i)?.[1]);
+    push(tag.match(/\sdata-original=["']([^"']+)["']/i)?.[1]);
+    push(tag.match(/\sdata-lazy=["']([^"']+)["']/i)?.[1]);
     const srcset = tag.match(/\ssrcset=["']([^"']+)["']/i)?.[1];
     if (srcset) srcset.split(",").forEach((p) => push(p.trim().split(/\s+/)[0]));
   }
-  for (const m of html.matchAll(
-    /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/gi
-  )) {
+
+  // 2. og:image, twitter:image meta tags
+  for (const m of html.matchAll(/<meta[^>]+>/gi)) {
+    const tag = m[0];
+    const prop = tag.match(/(?:property|name)=["']([^"']+)["']/i)?.[1] || "";
+    if (/og:image|twitter:image/i.test(prop)) {
+      push(tag.match(/content=["']([^"']+)["']/i)?.[1]);
+    }
+  }
+
+  // 3. CSS background-image: url(...)
+  for (const m of html.matchAll(/background(?:-image)?\s*:\s*url\(['"]?([^'")]+)['"]?\)/gi)) {
     push(m[1]);
   }
 
-  return NextResponse.json({ images: [...found].slice(0, 200) });
+  // 4. <source srcset> inside <picture> elements
+  for (const m of html.matchAll(/<source[^>]+>/gi)) {
+    const tag = m[0];
+    const srcset = tag.match(/\ssrcset=["']([^"']+)["']/i)?.[1];
+    if (srcset) srcset.split(",").forEach((p) => push(p.trim().split(/\s+/)[0]));
+    push(tag.match(/\ssrc=["']([^"']+)["']/i)?.[1]);
+  }
+
+  // 5. JSON-LD / next/image blurDataURL and _next/image src
+  for (const m of html.matchAll(/["'](https?:\/\/[^"'\s]+\.(?:png|jpe?g|webp|gif|avif))["']/gi)) {
+    push(m[1]);
+  }
+
+  // 6. <link rel="image_src"> and apple-touch-icon
+  for (const m of html.matchAll(/<link[^>]+>/gi)) {
+    const tag = m[0];
+    const rel = tag.match(/\srel=["']([^"']+)["']/i)?.[1] || "";
+    if (/image_src|apple-touch-icon|og:image/i.test(rel)) {
+      push(tag.match(/\shref=["']([^"']+)["']/i)?.[1]);
+    }
+  }
+
+  const images = [...found].slice(0, 300);
+  return NextResponse.json({ images, total: images.length });
 }

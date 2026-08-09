@@ -445,6 +445,12 @@ const NAV_GROUPS = [
     ],
   },
   {
+    label: "Tools",
+    tabs: [
+      { key: "extract", label: "Extract Images", icon: "🔍" },
+    ],
+  },
+  {
     label: "System",
     tabs: [
       { key: "contact", label: "Contact Info", icon: "✉" },
@@ -963,6 +969,375 @@ function MediaGrid({
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Image Extractor Panel — Web Scraper + Behance tabs
+// ─────────────────────────────────────────────────────────────────────────────
+const EXTRACT_TARGETS = [
+  { label: "Portfolio", key: "projects" },
+  { label: "Gallery", key: "gallery" },
+];
+
+const BehanceIcon = ({ size = 14, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={color} style={{ flexShrink: 0 }}>
+    <path d="M22 7h-7V5h7v2zm1.726 10c-.442 1.297-2.029 3-5.101 3-3.074 0-5.564-1.729-5.564-5.675 0-3.91 2.325-5.92 5.466-5.92 3.082 0 4.964 1.782 5.375 4.426.078.506.109 1.188.095 2.14H15.97c.13 1.2.247 2.194 2.105 2.194.657 0 1.282-.3 1.394-.829h2.257zM15.97 13h4.908c-.07-1.099-.756-1.756-2.359-1.756-1.665 0-2.35.657-2.549 1.756zM7.337 11.854c0-1.16-.629-1.977-2.183-1.977H3v3.934h2.154c1.554 0 2.183-.797 2.183-1.957zm.629 4.966c0-1.34-.75-2.183-2.53-2.183H3V19h2.436c1.78 0 2.53-.843 2.53-2.18zM0 21V3h7.184c2.456 0 4.065 1.544 4.065 3.93 0 1.48-.584 2.562-1.75 3.273C11.044 10.826 12 12.132 12 14.053 12 16.9 10.13 21 6.817 21H0z" />
+  </svg>
+);
+
+// Shared image-grid + import bar used by both tabs.
+function ExtractResults({ images, picked, setPicked, target, setTarget, onImport, done, accent }) {
+  const toggleOne = (u) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(u)) next.delete(u);
+      else next.add(u);
+      return next;
+    });
+  const selectAll = () => setPicked(new Set(images.map((i) => i.url)));
+  const selectNone = () => setPicked(new Set());
+  const pickedCount = images.filter((i) => picked.has(i.url)).length;
+
+  return (
+    <>
+      <div className="extract-toolbar">
+        <div className="extract-stats">
+          <span className="ex-badge">{images.length} found</span>
+          <span className="ex-badge picked">{pickedCount} selected</span>
+        </div>
+        <div className="extract-sel-btns">
+          <button className="ex-sel" onClick={selectAll}>Select All</button>
+          <button className="ex-sel" onClick={selectNone}>Deselect All</button>
+        </div>
+      </div>
+
+      <div className="extract-grid">
+        {images.map((img) => {
+          const on = picked.has(img.url);
+          const ext = (img.url.match(/\.([a-z]+)(\?|#|$)/i)?.[1] || "").toUpperCase();
+          const name = img.title || img.url.split("/").pop().split("?")[0];
+          return (
+            <label key={img.url} className={`ex-tile${on ? " on" : ""}`} title={img.url}>
+              <input type="checkbox" checked={on} onChange={() => toggleOne(img.url)} hidden />
+              <div className="ex-img-wrap">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={img.url} alt="" loading="lazy" />
+                {on && <div className="ex-check">✓</div>}
+              </div>
+              <div className="ex-info">
+                <span className="ex-name">{name.slice(0, 24)}</span>
+                {ext && <span className="ex-ext">{ext}</span>}
+              </div>
+            </label>
+          );
+        })}
+      </div>
+
+      <div className="extract-import-bar">
+        <div className="ex-import-left">
+          <span>Import to:</span>
+          <select value={target} onChange={(e) => setTarget(e.target.value)} className="ex-target-select">
+            {EXTRACT_TARGETS.map((t) => (
+              <option key={t.key} value={t.key}>{t.label}</option>
+            ))}
+          </select>
+        </div>
+        <button
+          className="ex-import-btn"
+          onClick={onImport}
+          disabled={pickedCount === 0}
+          style={accent ? { background: accent } : undefined}
+        >
+          ⬇ Import {pickedCount} image{pickedCount !== 1 ? "s" : ""}
+        </button>
+      </div>
+
+      {done && (
+        <div className="extract-success">
+          ✅ Images imported! Go to <strong>Portfolio</strong> or <strong>Gallery</strong> to review &amp; save.
+        </div>
+      )}
+    </>
+  );
+}
+
+function ExtractPanel({ onImport }) {
+  const [tab, setTab] = useState("web"); // 'web' | 'behance'
+
+  // Web scraper state
+  const [url, setUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [images, setImages] = useState([]);
+  const [picked, setPicked] = useState(new Set());
+  const [target, setTarget] = useState("projects");
+  const [done, setDone] = useState(false);
+
+  // Behance state
+  const [bUrl, setBUrl] = useState("");
+  const [bApiKey, setBApiKey] = useState("");
+  const [bLoading, setBLoading] = useState(false);
+  const [bError, setBError] = useState("");
+  const [bImages, setBImages] = useState([]);
+  const [bPicked, setBPicked] = useState(new Set());
+  const [bTarget, setBTarget] = useState("projects");
+  const [bDone, setBDone] = useState(false);
+  const [bLogs, setBLogs] = useState([]);
+  const logEndRef = useRef(null);
+
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [bLogs]);
+
+  // ── Web scraper ──
+  async function handleExtract(e) {
+    e.preventDefault();
+    if (!url.trim()) return;
+    setLoading(true);
+    setError("");
+    setImages([]);
+    setPicked(new Set());
+    setDone(false);
+    try {
+      const res = await fetch("/api/admin/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: url.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Extraction failed");
+      if (!data.images || data.images.length === 0) {
+        setError("No images found on that page. Try a different URL.");
+      } else {
+        const list = data.images.map((u) => ({ url: u, title: "" }));
+        setImages(list);
+        setPicked(new Set(list.map((i) => i.url)));
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function importWeb() {
+    const selected = images.filter((i) => picked.has(i.url));
+    if (!selected.length) return;
+    onImport(target, selected.map((i) => i.url));
+    setDone(true);
+    setPicked(new Set());
+  }
+
+  // ── Behance (streaming NDJSON) ──
+  async function handleBehance(e) {
+    e.preventDefault();
+    if (!bUrl.trim()) return;
+    setBLoading(true);
+    setBError("");
+    setBImages([]);
+    setBPicked(new Set());
+    setBDone(false);
+    setBLogs([]);
+    try {
+      const res = await fetch("/api/admin/behance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: bUrl.trim(), apiKey: bApiKey.trim() || undefined }),
+      });
+      if (!res.body) throw new Error("No response stream");
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done: rDone, value } = await reader.read();
+        if (rDone) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop();
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const ev = JSON.parse(line);
+            if (ev.type === "log") {
+              setBLogs((prev) => [...prev, ev.msg]);
+            } else if (ev.type === "done") {
+              setBImages(ev.images || []);
+              setBPicked(new Set((ev.images || []).map((i) => i.url)));
+            } else if (ev.type === "error") {
+              setBError(ev.error || "Failed");
+            }
+          } catch {
+            /* malformed line */
+          }
+        }
+      }
+    } catch (err) {
+      setBError(err.message || "Network error");
+    } finally {
+      setBLoading(false);
+    }
+  }
+
+  function importBehance() {
+    const selected = bImages.filter((i) => bPicked.has(i.url));
+    if (!selected.length) return;
+    onImport(bTarget, selected.map((i) => i.url));
+    setBDone(true);
+    setBPicked(new Set());
+  }
+
+  const isEditorUrl = /portfolio\/editor/i.test(bUrl);
+
+  return (
+    <div className="extract-panel">
+      {/* Tabs */}
+      <div className="ex-tabs">
+        <button
+          className={`ex-tab${tab === "web" ? " active" : ""}`}
+          onClick={() => setTab("web")}
+        >
+          🌐 Web Scraper
+        </button>
+        <button
+          className={`ex-tab behance${tab === "behance" ? " active" : ""}`}
+          onClick={() => setTab("behance")}
+        >
+          <BehanceIcon /> Behance
+        </button>
+      </div>
+
+      {/* ── WEB SCRAPER TAB ── */}
+      {tab === "web" && (
+        <>
+          <div className="ex-input-card">
+            <form className="extract-form" onSubmit={handleExtract}>
+              <div className="ex-url-wrap">
+                <span className="ex-url-icon">🌐</span>
+                <input
+                  type="url"
+                  value={url}
+                  onChange={(e) => { setUrl(e.target.value); setDone(false); }}
+                  placeholder="Enter website URL — e.g. https://example.com/portfolio"
+                  required
+                />
+                {url && <button type="button" className="ex-clear" onClick={() => setUrl("")}>✕</button>}
+              </div>
+              <button type="submit" className="extract-go-btn" disabled={loading || !url.trim()}>
+                {loading ? "⏳ Extracting…" : "🔍 Extract Images"}
+              </button>
+            </form>
+            {loading && <div className="ex-progress"><div className="ex-progress-fill" /></div>}
+            {error && <p className="extract-error">⚠️ {error}</p>}
+          </div>
+
+          {images.length > 0 && (
+            <ExtractResults
+              images={images}
+              picked={picked}
+              setPicked={setPicked}
+              target={target}
+              setTarget={setTarget}
+              onImport={importWeb}
+              done={done}
+            />
+          )}
+        </>
+      )}
+
+      {/* ── BEHANCE TAB ── */}
+      {tab === "behance" && (
+        <>
+          <div className="ex-input-card">
+            <form className="behance-form" onSubmit={handleBehance}>
+              <div className="extract-form">
+                <div className="ex-url-wrap">
+                  <BehanceIcon size={16} color="#1769ff" />
+                  <input
+                    type="text"
+                    value={bUrl}
+                    onChange={(e) => { setBUrl(e.target.value); setBDone(false); }}
+                    placeholder="Public gallery URL — e.g. behance.net/gallery/217395233/Project-Title"
+                  />
+                  {bUrl && <button type="button" className="ex-clear" onClick={() => setBUrl("")}>✕</button>}
+                </div>
+                <button type="submit" className="extract-go-btn behance" disabled={bLoading || !bUrl.trim()}>
+                  {bLoading ? "⏳ Fetching…" : "🎨 Fetch Images"}
+                </button>
+              </div>
+
+              {isEditorUrl && (
+                <div className="ex-warn">
+                  ⚠️ <strong>Editor URL detected</strong> — this page requires Behance login and cannot be scraped.
+                  Use the <strong>public gallery URL</strong>: behance.net/gallery/<strong>217395233</strong>/Your-Project-Title
+                </div>
+              )}
+
+              <div className="ex-apikey-row">
+                <div className="ex-url-wrap">
+                  <span className="ex-url-icon" style={{ fontSize: 13 }}>🔑</span>
+                  <input
+                    type="password"
+                    value={bApiKey}
+                    onChange={(e) => setBApiKey(e.target.value)}
+                    placeholder="Behance API key (optional — improves results)"
+                  />
+                </div>
+                <a href="https://www.behance.net/dev/register" target="_blank" rel="noreferrer" className="ex-apikey-link">
+                  Get API key ↗
+                </a>
+              </div>
+            </form>
+
+            {bLoading && <div className="ex-progress"><div className="ex-progress-fill behance" /></div>}
+            {bError && <p className="extract-error">⚠️ {bError}</p>}
+          </div>
+
+          {/* Live log panel */}
+          {(bLoading || bLogs.length > 0) && (
+            <div className="ex-log-panel">
+              <div className="ex-log-head">
+                <span className="ex-log-title">
+                  {bLoading ? <><span className="ex-log-dot" /> Live Log</> : "📋 Extraction Log"}
+                </span>
+                <span className="ex-log-count">{bLogs.length} line{bLogs.length !== 1 ? "s" : ""}</span>
+              </div>
+              <div className="ex-log-body">
+                {bLogs.map((line, i) => (
+                  <div
+                    key={i}
+                    className="ex-log-line"
+                    style={{
+                      color: line.startsWith("  ✓") ? "#10b981"
+                        : line.startsWith("  ✗") ? "#f87171"
+                        : line.startsWith("Done!") ? "#34d399"
+                        : line.includes("⚠") ? "#f5c542"
+                        : "#c9d1d9",
+                    }}
+                  >
+                    {line}
+                  </div>
+                ))}
+                <div ref={logEndRef} />
+              </div>
+            </div>
+          )}
+
+          {bImages.length > 0 && (
+            <ExtractResults
+              images={bImages}
+              picked={bPicked}
+              setPicked={setBPicked}
+              target={bTarget}
+              setTarget={setBTarget}
+              onImport={importBehance}
+              done={bDone}
+              accent="linear-gradient(135deg,#1769ff,#0050d0)"
+            />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [content, setContent] = useState(null);
@@ -1071,9 +1446,23 @@ export default function AdminDashboard() {
     services: ["Services", "The service cards shown on the homepage."],
     testimonials: ["Testimonials", "Client quotes shown on the homepage."],
     blog: ["Blog Posts", "Posts shown on the homepage and the Blog page."],
+    extract: ["Extract Images", "Scrape images from any public URL and import them to Portfolio or Gallery."],
     contact: ["Contact Info", "Shown in the mobile menu and used across the site."],
     settings: ["Settings", "Login-screen options and site-wide toggles."],
   };
+
+  function handleExtractImport(listKey, urls) {
+    urls.forEach((imgUrl) => {
+      const filename = imgUrl.split("/").pop().split("?")[0].replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " ").trim();
+      addListItem(listKey, {
+        title: filename || "Extracted image",
+        description: "",
+        image: imgUrl,
+        category: "",
+        caption: filename || "",
+      });
+    });
+  }
 
   const [heading, subtitle] = HEADINGS[activeTab];
 
@@ -1445,6 +1834,10 @@ export default function AdminDashboard() {
                 + Add post
               </button>
             </>
+          )}
+
+          {activeTab === "extract" && (
+            <ExtractPanel onImport={handleExtractImport} />
           )}
 
           {activeTab === "contact" && (

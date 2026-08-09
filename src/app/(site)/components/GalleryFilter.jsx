@@ -5,7 +5,7 @@ import { X, ArrowRight } from "./icons";
 
 const ALL = "All";
 
-export default function GalleryFilter({ items, heading = true }) {
+export default function GalleryFilter({ items, heading = true, layout = "sidebar" }) {
   const [active, setActive] = useState(ALL);
   const [lightbox, setLightbox] = useState(null); // index into `visible`
 
@@ -63,38 +63,40 @@ export default function GalleryFilter({ items, heading = true }) {
       <div className="container">
         {heading && (
           <div className="section-head">
-            <div className="eyebrow">Our Gallery</div>
-            <h2 className="section-title">Moments From Our Work</h2>
+            <div className="eyebrow">{layout === "pills" ? "Our Work" : "Our Gallery"}</div>
+            <h2 className="section-title">
+              {layout === "pills"
+                ? "Designs That Speak. Products That Perform."
+                : "Moments From Our Work"}
+            </h2>
             <p>
-              A look inside our studio — the people, process, and projects
-              behind the results.
+              {layout === "pills"
+                ? "Browse our complete body of work — filter by category to explore projects, branding, and more."
+                : "A look inside our studio — the people, process, and projects behind the results."}
             </p>
           </div>
         )}
 
-        <div className="gal-layout">
-          <aside className="gal-side">
-            <h4>Categories</h4>
-            <ul>
-              {[ALL, ...categories].map((cat) => (
-                <li key={cat}>
+        {layout === "pills" ? (
+          <>
+            {categories.length > 0 && (
+              <div className="gallery-filters">
+                {[ALL, ...categories].map((cat) => (
                   <button
+                    key={cat}
                     type="button"
-                    className={active === cat ? "active" : ""}
+                    className={`filter-pill${active === cat ? " active" : ""}`}
                     onClick={() => {
                       setActive(cat);
                       setLightbox(null);
                     }}
                   >
-                    <span>{cat}</span>
-                    <em>{countOf(cat)}</em>
+                    {cat} <em className="count">{countOf(cat)}</em>
                   </button>
-                </li>
-              ))}
-            </ul>
-          </aside>
+                ))}
+              </div>
+            )}
 
-          <div className="gal-main">
             <div className="gal-masonry">
               {visible.map((g, i) => (
                 <button
@@ -116,8 +118,55 @@ export default function GalleryFilter({ items, heading = true }) {
             {visible.length === 0 && (
               <p className="gallery-empty">Nothing in this category yet.</p>
             )}
+          </>
+        ) : (
+          <div className="gal-layout">
+            <aside className="gal-side">
+              <h4>Categories</h4>
+              <ul>
+                {[ALL, ...categories].map((cat) => (
+                  <li key={cat}>
+                    <button
+                      type="button"
+                      className={active === cat ? "active" : ""}
+                      onClick={() => {
+                        setActive(cat);
+                        setLightbox(null);
+                      }}
+                    >
+                      <span>{cat}</span>
+                      <em>{countOf(cat)}</em>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </aside>
+
+            <div className="gal-main">
+              <div className="gal-masonry">
+                {visible.map((g, i) => (
+                  <button
+                    type="button"
+                    className="gal-item"
+                    key={`${g.image}-${i}`}
+                    onClick={() => setLightbox(i)}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={g.image} alt={g.caption || `Gallery image ${i + 1}`} />
+                    <span className="gal-overlay">
+                      {g.caption && <strong>{g.caption}</strong>}
+                      {g.category && <em>{g.category}</em>}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {visible.length === 0 && (
+                <p className="gallery-empty">Nothing in this category yet.</p>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {shot && (
