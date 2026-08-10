@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { createSessionToken, SESSION_COOKIE, MAX_AGE_SECONDS } from "@/lib/session";
+import {
+  createSessionToken,
+  SESSION_COOKIE,
+  MAX_AGE_SECONDS,
+  NO_AUTO_LOGIN_COOKIE,
+} from "@/lib/session";
 
 export async function POST(request) {
   const { password } = await request.json();
@@ -17,5 +22,7 @@ export async function POST(request) {
     path: "/",
     maxAge: MAX_AGE_SECONDS,
   });
+  // An explicit sign-in clears the sign-out marker.
+  response.cookies.delete(NO_AUTO_LOGIN_COOKIE);
   return response;
 }

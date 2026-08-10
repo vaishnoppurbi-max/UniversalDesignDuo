@@ -1338,6 +1338,277 @@ function ExtractPanel({ onImport }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Management — add / remove admins, change roles, disable accounts
+// ─────────────────────────────────────────────────────────────────────────────
+const ASSIGNABLE_ROLES = ["admin", "editor", "viewer"];
+
+function initialsOf(text) {
+  return (text || "?")
+    .split(/[\s@._-]/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s) => s[0].toUpperCase())
+    .join("");
+}
+
+function relativeDate(iso) {
+  if (!iso) return "never";
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "never";
+  const mins = Math.floor((Date.now() - then) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+function UserManagement({ me }) {
+  const [users, setUsers] = useState([]);
+  const [roles, setRoles] = useState({});
+  const [canManage, setCanManage] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  const [newEmail, setNewEmail] = useState("");
+  const [newRole, setNewRole] = useState("editor");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/users");
+        if (!res.ok) throw new Error("Could not load users");
+        const data = await res.json();
+        if (cancelled) return;
+        setUsers(data.users || []);
+        setRoles(data.roles || {});
+        setCanManage(!!data.canManage);
+      } catch (err) {
+        if (!cancelled) setError(err.message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function flash(message) {
+    setNotice(message);
+    setError("");
+    setTimeout(() => setNotice(""), 4000);
+  }
+
+  async function send(method, body, successMessage) {
+    setBusy(body.email || "form");
+    setError("");
+    try {
+      const res = await fetch("/api/admin/users", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Request failed");
+      setUsers(data.users || []);
+      flash(successMessage);
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function handleAdd(e) {
+    e.preventDefault();
+    const ok = await send(
+      "POST",
+      { email: newEmail.trim(), role: newRole },
+      `${newEmail.trim()} added as ${roles[newRole]?.label || newRole}`
+    );
+    if (ok) {
+      setNewEmail("");
+      setNewRole("editor");
+    }
+  }
+
+  function handleRoleChange(email, role) {
+    send("PATCH", { email, role }, `${email} is now ${roles[role]?.label || role}`);
+  }
+
+  function handleToggleDisabled(user) {
+    send(
+      "PATCH",
+      { email: user.email, disabled: !user.disabled },
+      user.disabled ? `${user.email} re-enabled` : `${user.email} disabled`
+    );
+  }
+
+  function handleRemove(email) {
+    if (!confirm(`Remove ${email}? They will lose access immediately.`)) return;
+    send("DELETE", { email }, `${email} removed`);
+  }
+
+  if (loading) {
+    return (
+      <div className="card">
+        <h2>User Management</h2>
+        <p className="muted">Loading users…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card">
+      <div className="um-head">
+        <h2>User Management</h2>
+        <span className="um-count">{users.length} user{users.length !== 1 ? "s" : ""}</span>
+      </div>
+
+      {me?.openAccess ? (
+        <div className="access-banner open">
+          <strong>🌐 Open access is ON</strong>
+          <span>
+            <strong>Anyone</strong> with a verified Google account can sign in. New accounts are
+            auto-enrolled below as <strong>Editor</strong> the first time they log in — you can
+            change their role or disable them here.
+            <br />
+            To re-lock, set <code>ALLOW_ANY_GOOGLE_USER=false</code> in <code>.env.local</code>{" "}
+            and restart the server.
+          </span>
+        </div>
+      ) : (
+        <div className="access-banner locked">
+          <strong>🔒 Restricted access</strong>
+          <span>Only the users listed below can sign in.</span>
+        </div>
+      )}
+
+      {canManage && (
+        <form className="um-add" onSubmit={handleAdd}>
+          <input
+            type="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            placeholder="name@example.com"
+            required
+          />
+          <select value={newRole} onChange={(e) => setNewRole(e.target.value)}>
+            {ASSIGNABLE_ROLES.map((r) => (
+              <option key={r} value={r}>{roles[r]?.label || r}</option>
+            ))}
+          </select>
+          <button type="submit" className="btn btn-primary" disabled={busy === "form"}>
+            {busy === "form" ? "Adding…" : "+ Add user"}
+          </button>
+        </form>
+      )}
+
+      {!canManage && (
+        <p className="muted um-readonly">
+          Only the Super Admin ({me?.superAdmin || "—"}) can add or remove users.
+        </p>
+      )}
+
+      {error && <p className="um-error">⚠️ {error}</p>}
+      {notice && <p className="um-notice">✅ {notice}</p>}
+
+      <div className="user-list">
+        {users.map((user) => {
+          const isYou = user.email === (me?.email || "").toLowerCase();
+          const isSuper = user.role === "super_admin";
+          const locked = isSuper || user.source === "env";
+          const rowBusy = busy === user.email;
+
+          return (
+            <div className={`user-row${user.disabled ? " disabled" : ""}`} key={user.email}>
+              {user.picture ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img className="user-avatar img" src={user.picture} alt="" />
+              ) : (
+                <div className="user-avatar">{initialsOf(user.name || user.email)}</div>
+              )}
+
+              <div className="user-body">
+                <div className="user-email">
+                  {user.email}
+                  {isSuper && <span className="role-badge super">Super Admin</span>}
+                  {user.source === "env" && !isSuper && (
+                    <span className="role-badge env">.env</span>
+                  )}
+                  {user.addedBy === "open-access" && (
+                    <span className="role-badge guest">Guest</span>
+                  )}
+                  {isYou && <span className="role-badge you">You</span>}
+                  {user.disabled && <span className="role-badge off">Disabled</span>}
+                </div>
+                <div className="user-perms">
+                  {roles[user.role]?.perms || "Can edit site content."}
+                </div>
+                <div className="user-meta">
+                  Last sign-in: {relativeDate(user.lastLogin)}
+                  {user.addedAt && ` · Added ${relativeDate(user.addedAt)}`}
+                </div>
+              </div>
+
+              <div className="user-actions">
+                {locked ? (
+                  <span className="um-locked" title="Configured in .env.local">
+                    {roles[user.role]?.label || user.role}
+                  </span>
+                ) : (
+                  <>
+                    <select
+                      value={user.role}
+                      disabled={!canManage || rowBusy}
+                      onChange={(e) => handleRoleChange(user.email, e.target.value)}
+                    >
+                      {ASSIGNABLE_ROLES.map((r) => (
+                        <option key={r} value={r}>{roles[r]?.label || r}</option>
+                      ))}
+                    </select>
+                    {canManage && (
+                      <>
+                        <button
+                          className="um-btn"
+                          disabled={rowBusy}
+                          onClick={() => handleToggleDisabled(user)}
+                          title={user.disabled ? "Re-enable this account" : "Block sign-in"}
+                        >
+                          {user.disabled ? "Enable" : "Disable"}
+                        </button>
+                        <button
+                          className="um-btn danger"
+                          disabled={rowBusy}
+                          onClick={() => handleRemove(user.email)}
+                        >
+                          Remove
+                        </button>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        {users.length === 0 && <p className="muted">No users yet.</p>}
+      </div>
+    </div>
+  );
+}
 export default function AdminDashboard() {
   const router = useRouter();
   const [content, setContent] = useState(null);
@@ -1925,47 +2196,7 @@ export default function AdminDashboard() {
                 </label>
               </div>
 
-              <div className="card">
-                <h2>Admin Users</h2>
-                <p className="muted" style={{ marginTop: -8, marginBottom: 14 }}>
-                  Emails allowed to sign in via Google. Managed in <code>.env.local</code> via{" "}
-                  <code>ADMIN_EMAILS</code>. The Super Admin is set via <code>SUPER_ADMIN_EMAIL</code>.
-                </p>
-                <div className="user-list">
-                  {(me?.admins || []).map((email) => {
-                    const isSuper = email === me?.superAdmin;
-                    const isYou = email === (me?.email || "").toLowerCase();
-                    return (
-                      <div className="user-row" key={email}>
-                        <div className="user-avatar">
-                          {email
-                            .split(/[@.]/)
-                            .filter(Boolean)
-                            .slice(0, 2)
-                            .map((s) => s[0].toUpperCase())
-                            .join("")}
-                        </div>
-                        <div className="user-body">
-                          <div className="user-email">
-                            {email}
-                            {isSuper && <span className="role-badge super">Super Admin</span>}
-                            {!isSuper && <span className="role-badge">Admin</span>}
-                            {isYou && <span className="role-badge you">You</span>}
-                          </div>
-                          <div className="user-perms">
-                            {isSuper
-                              ? "Full access — can toggle login options and manage settings."
-                              : "Can edit site content (hero, portfolio, gallery, services, testimonials, blog, contact)."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {(!me?.admins || me.admins.length === 0) && (
-                    <p className="muted">No admin emails configured.</p>
-                  )}
-                </div>
-              </div>
+              <UserManagement me={me} />
             </>
           )}
 

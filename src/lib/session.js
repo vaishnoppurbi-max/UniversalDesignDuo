@@ -1,6 +1,10 @@
 const SESSION_COOKIE = "admin_session";
 const MAX_AGE_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
+// Set by logout, cleared on an explicit sign-in. Suppresses the localhost
+// auto-login so signing out actually keeps you signed out.
+const NO_AUTO_LOGIN_COOKIE = "admin_no_auto_login";
+
 function getSecret() {
   const secret = process.env.SESSION_SECRET;
   if (!secret) {
@@ -60,6 +64,7 @@ export async function createSessionToken(user = {}) {
     name: user.name || null,
     picture: user.picture || null,
     method: user.method || "password",
+    role: user.role || null,
   };
   const payloadB64 = textToBase64Url(JSON.stringify(payload));
   const key = await getKey();
@@ -119,4 +124,4 @@ export async function readSessionToken(token) {
   }
 }
 
-export { SESSION_COOKIE, MAX_AGE_SECONDS };
+export { SESSION_COOKIE, MAX_AGE_SECONDS, NO_AUTO_LOGIN_COOKIE };

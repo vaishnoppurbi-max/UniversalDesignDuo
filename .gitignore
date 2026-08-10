@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# admin user store (contains account emails; use Supabase in production)
+/data/admin-users.json

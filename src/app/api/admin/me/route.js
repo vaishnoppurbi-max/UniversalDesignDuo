@@ -1,18 +1,6 @@
 import { NextResponse } from "next/server";
 import { readSessionToken, SESSION_COOKIE } from "@/lib/session";
-
-function getAdminList() {
-  return (process.env.ADMIN_EMAILS || "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-function getSuperAdmin() {
-  const explicit = (process.env.SUPER_ADMIN_EMAIL || "").trim().toLowerCase();
-  if (explicit) return explicit;
-  return getAdminList()[0] || null;
-}
+import { listUsers, getSuperAdmin, isOpenAccess, ROLES } from "@/lib/users";
 
 export async function GET(request) {
   const token = request.cookies.get(SESSION_COOKIE)?.value;
@@ -22,18 +10,24 @@ export async function GET(request) {
   }
 
   const superAdmin = getSuperAdmin();
-  const admins = getAdminList();
   const email = (session.email || "").toLowerCase();
   const isSuper = !!email && email === superAdmin;
+
+  const users = await listUsers();
+  const me = users.find((u) => u.email === email);
+  const role = isSuper ? "super_admin" : me?.role || session.role || "admin";
 
   return NextResponse.json({
     email: session.email,
     name: session.name,
     picture: session.picture,
     method: session.method,
-    role: isSuper ? "super_admin" : session.email ? "admin" : "admin_password",
+    role,
+    roleLabel: ROLES[role]?.label || "Admin",
     isSuper,
     superAdmin,
-    admins,
+    admins: users.map((u) => u.email),
+    users,
+    openAccess: isOpenAccess(),
   });
 }
